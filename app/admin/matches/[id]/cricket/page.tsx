@@ -2599,7 +2599,7 @@ async function endInningsManually() {
   }
 
 
-  async function addNoBallDelivery(
+async function addNoBallDelivery(
   batRuns: number
 ) {
   if (!innings) {
@@ -2665,8 +2665,7 @@ async function endInningsManually() {
 
           extraType: "NO_BALL",
 
-          // IMPORTANT:
-          // No-ball is NOT a legal delivery.
+          // No-ball is NOT a legal delivery
           isLegalDelivery: false,
 
           isWicket: false,
@@ -2700,15 +2699,15 @@ async function endInningsManually() {
     // NO BALL STRIKE CHANGE
     // =================================================
     //
-    // Total runs on a no-ball determine whether
-    // striker changes.
+    // Strike is determined by runs scored OFF THE BAT.
     //
-    // NB       = 1 total -> no change
-    // NB+1     = 2 total -> no change
-    // NB+2     = 3 total -> change
-    // NB+3     = 4 total -> no change
-    // NB+4     = 5 total -> change
-    // NB+6     = 7 total -> change
+    // NB       = 0 bat runs -> NO change
+    // NB+1     = 1 bat run  -> CHANGE
+    // NB+2     = 2 bat runs -> NO change
+    // NB+3     = 3 bat runs -> CHANGE
+    // NB+4     = 4 bat runs -> NO change
+    // NB+5     = 5 bat runs -> CHANGE
+    // NB+6     = 6 bat runs -> NO change
     //
 
     let nextStriker =
@@ -2716,8 +2715,15 @@ async function endInningsManually() {
 
     let nextNonStriker =
       nonStrikerId;
+console.log("NO BALL STRIKE DEBUG", {
+  strikerId,
+  nonStrikerId,
+  runsOffBat,
+  totalRuns,
+});
 
-    if (totalRuns % 2 === 1) {
+    // Odd runs off the bat change strike
+    if (runsOffBat % 2 === 1) {
       [
         nextStriker,
         nextNonStriker,
@@ -4218,16 +4224,16 @@ async function addBall(
    */
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-100 text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-900">
 
       {/* =====================================================
           HEADER
       ===================================================== */}
 
-      <header className="h-[64px] border-b bg-white">
-        <div className="mx-auto flex h-full max-w-[1550px] items-center justify-between px-5">
+      <header className="min-h-[64px] border-b bg-white">
+       <div className="mx-auto flex min-h-[64px] max-w-[1550px] flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-5">
 
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
 
             <Link
               href="/admin/matches"
@@ -4238,7 +4244,7 @@ async function addBall(
 
             <div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
 
                 <span className="text-sm font-black">
                   Sports Carnival
@@ -4248,7 +4254,7 @@ async function addBall(
                   /
                 </span>
 
-                <span className="text-sm font-bold text-slate-700">
+               <span className="max-w-[120px] truncate text-sm font-bold text-slate-700 sm:max-w-none">
                   {match.team1.name}
                 </span>
 
@@ -4256,7 +4262,7 @@ async function addBall(
                   vs
                 </span>
 
-                <span className="text-sm font-bold text-slate-700">
+               <span className="max-w-[120px] truncate text-sm font-bold text-slate-700 sm:max-w-none">
                   {match.team2.name}
                 </span>
 
@@ -4272,7 +4278,7 @@ async function addBall(
 
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
              {/* UNDO LAST BALL */}
   <button
     type="button"
@@ -4287,7 +4293,7 @@ async function addBall(
         ? "Undo last ball"
         : "No ball to undo"
     }
-    className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 text-[10px] font-black text-slate-700 shadow-sm sm:gap-2 sm:px-3 sm:text-xs"
   >
     <RotateCcw
       size={14}
@@ -4303,8 +4309,7 @@ async function addBall(
     onClick={
       endInningsManually
     }
-    className="rounded-lg bg-red-600 px-3 py-2 text-[11px] font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-  >
+    className="rounded-lg bg-red-600 px-2.5 py-2 text-[10px] font-black text-white sm:px-3 sm:text-[11px]"  >
     {saving
       ? "ENDING..."
       : "END INNINGS"}
@@ -4327,7 +4332,7 @@ async function addBall(
           MAIN
       ===================================================== */}
 
-      <main className="mx-auto h-[calc(100vh-64px)] max-w-[1550px] px-4 py-3">
+     <main className="mx-auto min-h-[calc(100vh-64px)] max-w-[1550px] px-3 py-3 sm:px-4 lg:h-[calc(100vh-64px)]">
 
         {/* =====================================================
             INNINGS INDICATOR
@@ -4359,9 +4364,8 @@ async function addBall(
             SCORE HEADER
         ===================================================== */}
 
-        <section className="mb-3 h-[92px] rounded-2xl border bg-white px-6 shadow-sm">
-
-          <div className="grid h-full grid-cols-[1fr_auto_1fr] items-center">
+<section className="mb-3 rounded-2xl border bg-white px-3 py-3 shadow-sm sm:px-6">
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
 
             <div>
 
@@ -4380,7 +4384,7 @@ async function addBall(
 
             </div>
 
-            <div className="px-12 text-center">
+        <div className="px-2 text-center sm:px-12">
 
               <div className="text-4xl font-black tracking-tight">
                 {innings.totalRuns}/
@@ -4398,7 +4402,7 @@ async function addBall(
   )}
             </div>
 
-            <div className="flex justify-end gap-8 text-right">
+         <div className="flex flex-wrap justify-center gap-5 text-center sm:justify-end sm:gap-8 sm:text-right">
 
               <div>
 
@@ -4450,13 +4454,13 @@ async function addBall(
             TWO COLUMN
         ===================================================== */}
 
-        <div className="grid h-[calc(100%-105px)] min-h-0 grid-cols-[330px_minmax(0,1fr)] gap-3">
+      <div className="grid min-h-0 grid-cols-1 gap-3 lg:h-[calc(100%-105px)] lg:grid-cols-[330px_minmax(0,1fr)]">
 
           {/* =====================================================
               LEFT
           ===================================================== */}
 
-          <section className="min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+          <section className="min-w-0 overflow-x-hidden lg:min-h-0 lg:overflow-y-auto lg:pr-1">
 <div className="flex min-w-0 flex-col gap-3">
             {/* =================================================
                 PLAYERS
@@ -4665,9 +4669,9 @@ async function addBall(
                 RUNS
               </h2>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
 
-                {[0, 1, 2, 3, 4, 6].map(
+                {[0, 1, 2, 3, 4, 5,6].map(
                   (run) => (
                     <button
                       key={run}
@@ -4788,9 +4792,9 @@ async function addBall(
 
     </div>
 
-    <div className="grid grid-cols-6 gap-2">
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
 
-      {[0, 1, 2, 3, 4, 6].map(
+      {[0, 1, 2, 3, 4, 5,6].map(
         (batRuns) => (
 
           <button
@@ -4813,9 +4817,8 @@ async function addBall(
                * NB + 6 = 7
                */
 
-              addBall(
-                batRuns,
-                "NO_BALL"
+              addNoBallDelivery(
+                batRuns
               );
 
               setNoBallActive(false);
@@ -5034,7 +5037,7 @@ async function addBall(
               RIGHT
           ===================================================== */}
 
-          <section className="grid min-h-0 grid-cols-[1fr_340px] gap-3">
+          <section className="grid min-h-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
 
             {/* =================================================
                 SCORECARDS
@@ -5059,10 +5062,9 @@ async function addBall(
 
                 </div>
 
-                <div className="overflow-hidden rounded-xl border">
+                <div className="overflow-x-auto rounded-xl border">
 
-                  <div className="grid grid-cols-[1fr_55px_65px_65px_90px] bg-slate-50 px-3 py-2 text-[10px] font-black text-slate-400">
-
+               <div className="grid min-w-[300px] grid-cols-[1fr_55px_65px_65px_90px] bg-slate-50 px-3 py-2 text-[10px] font-black text-slate-400">
                     <span>
                       BATTER
                     </span>
@@ -5096,7 +5098,7 @@ async function addBall(
                           className="border-t px-3 py-2"
                         >
 
-                          <div className="grid grid-cols-[1fr_55px_65px_65px_90px] items-center">
+                          <div className="grid grid-cols-[1fr_70px_70px_60px_70px] items-center">
 
                             <div>
 
@@ -5179,10 +5181,9 @@ async function addBall(
                   BOWLING
                 </h2>
 
-                <div className="overflow-hidden rounded-xl border">
+                <div className="overflow-x-auto rounded-xl border">
 
-                  <div className="grid grid-cols-[1fr_70px_70px_60px_70px] bg-slate-50 px-3 py-2 text-[10px] font-black text-slate-400">
-
+                 <div className="grid min-w-[340px] grid-cols-[1fr_70px_70px_60px_70px] bg-slate-50 px-3 py-2 text-[10px] font-black text-slate-400">
                     <span>
                       BOWLER
                     </span>
