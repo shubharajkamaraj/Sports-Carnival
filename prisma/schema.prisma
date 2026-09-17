@@ -1,0 +1,708 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =====================================================
+// ENUMS
+// =====================================================
+
+enum MatchStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum GameCategory {
+  JUNIOR_KIDS
+  SENIOR_KIDS
+  WOMENS
+  MEN
+  OTHER
+  EXCLUDED
+}
+
+enum SportType {
+  CRICKET
+  FOOTBALL
+  THROWBALL
+  HANDBALL
+}
+
+enum TournamentStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+}
+
+enum MatchResult {
+  TEAM1_WIN
+  TEAM2_WIN
+  DRAW
+  TIE
+  NO_RESULT
+}
+
+enum CricketExtraType {
+  NONE
+  WIDE
+  NO_BALL
+  BYE
+  LEG_BYE
+}
+
+enum CricketDismissalType {
+  BOWLED
+  CAUGHT
+  LBW
+  RUN_OUT
+  STUMPED
+  HIT_WICKET
+  RETIRED_HURT
+  RETIRED_OUT
+  OBSTRUCTING_THE_FIELD
+}
+
+enum AwardType {
+  MAN_OF_THE_MATCH
+  BEST_PLAYER
+  BEST_BOWLER
+}
+
+enum FootballEventType {
+  GOAL
+  OWN_GOAL
+  PENALTY
+  YELLOW_CARD
+  RED_CARD
+}
+
+enum FootballPenaltyResult {
+  GOAL
+  MISSED
+}
+
+enum HandballEventType {
+  GOAL
+  YELLOW_CARD
+  RED_CARD
+  OWN_GOAL
+  PENALTY
+}
+
+enum HandballPenaltyResult {
+  GOAL
+  MISSED
+}
+
+enum ThrowballEventType {
+  POINT
+  PENALTY
+  SERVICE_ERROR
+  TIMEOUT
+}
+
+enum PlayerMatchRole {
+  PLAYER
+  CAPTAIN
+}
+
+// =====================================================
+// TOURNAMENT
+// =====================================================
+
+model Tournament {
+  id          Int              @id @default(autoincrement())
+  name        String
+  season      String?
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      TournamentStatus @default(UPCOMING)
+
+  games   Game[]
+  teams   TournamentTeam[]
+  matches Match[]
+  awards  MatchAward[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================================
+// GAME
+// =====================================================
+
+model Game {
+  id           Int           @id @default(autoincrement())
+  name         String
+  sportType    SportType?
+  tournamentId Int
+  category     GameCategory?
+  gameOrder    Int?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+
+  matches Match[]
+
+  competitionGameParticipations CompetitionGameParticipation[]
+
+  competitionGameResults CompetitionGameResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId])
+}
+
+// =====================================================
+// TEAM
+// =====================================================
+
+model Team {
+  id        Int     @id @default(autoincrement())
+  name      String
+  captain   String?
+  playerIds Int[]   @default([])
+
+  tournaments TournamentTeam[]
+
+  team1Matches Match[] @relation("Team1Matches")
+  team2Matches Match[] @relation("Team2Matches")
+  wonMatches   Match[] @relation("MatchWinner")
+
+  matchPlayers MatchPlayer[]
+  players      Player[]
+
+  // ---------------------------------------------------
+  // CRICKET
+  // ---------------------------------------------------
+
+  cricketBattingInnings CricketInnings[] @relation("CricketBattingTeam")
+  cricketBowlingInnings CricketInnings[] @relation("CricketBowlingTeam")
+
+  // ---------------------------------------------------
+  // FOOTBALL
+  // ---------------------------------------------------
+
+  footballTeam1Scores FootballMatchScore[] @relation("FootballTeam1")
+  footballTeam2Scores FootballMatchScore[] @relation("FootballTeam2")
+  footballEvents      FootballEvent[]      @relation("FootballEventTeam")
+
+  // ---------------------------------------------------
+  // HANDBALL
+  // ---------------------------------------------------
+
+  handballTeam1Scores HandballMatchScore[] @relation("HandballTeam1")
+  handballTeam2Scores HandballMatchScore[] @relation("HandballTeam2")
+  handballEvents      HandballEvent[]      @relation("HandballEventTeam")
+
+  // ---------------------------------------------------
+  // THROWBALL
+  // ---------------------------------------------------
+
+  throwballTeam1Scores ThrowballMatchScore[] @relation("ThrowballTeam1")
+  throwballTeam2Scores ThrowballMatchScore[] @relation("ThrowballTeam2")
+  throwballEvents      ThrowballEvent[]      @relation("ThrowballEventTeam")
+  throwballWonMatches  ThrowballMatchScore[] @relation("ThrowballWinner")
+  throwballPoints      ThrowballPoint[]      @relation("ThrowballPointWinningTeam")
+
+  competitionResults        CompetitionGameResult[]
+  competitionParticipations CompetitionGameParticipation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =====================================================
+// TOURNAMENT TEAM
+// =====================================================
+
+model TournamentTeam {
+  id           Int @id @default(autoincrement())
+  tournamentId Int
+  teamId       Int
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  team       Team       @relation(fields: [teamId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([tournamentId, teamId])
+  @@index([tournamentId])
+  @@index([teamId])
+}
+
+// =====================================================
+// PLAYER
+// =====================================================
+
+model Player {
+  id       Int     @id @default(autoincrement())
+  name     String
+  jerseyNo Int?
+  role     String?
+  photo    String?
+
+  teamId Int
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  matchPlayers MatchPlayer[]
+
+  footballEvents FootballEvent[]
+
+  handballEvents  HandballEvent[]
+  throwballEvents ThrowballEvent[]
+
+  awards            MatchAward[]     @relation("AwardedPlayer")
+  throwballAttacks  ThrowballPoint[] @relation("ThrowballPointAttacker")
+  throwballDefences ThrowballPoint[] @relation("ThrowballPointOpponent")
+
+  competitionResults CompetitionGameResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+}
+enum MatchStage {
+  LEAGUE
+  FINAL
+}
+// =====================================================
+// MATCH
+// =====================================================
+
+model Match {
+  id Int @id @default(autoincrement())
+
+  tournamentId Int
+  gameId       Int
+
+  team1Id Int
+  team2Id Int
+
+  matchNumber Int?
+ stage MatchStage @default(LEAGUE)
+
+  status MatchStatus @default(UPCOMING)
+
+  result       MatchResult?
+  winnerTeamId Int?
+
+  overs Int @default(2)
+
+  team1Score Int @default(0)
+  team2Score Int @default(0)
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  game       Game       @relation(fields: [gameId], references: [id])
+
+  team1 Team @relation("Team1Matches", fields: [team1Id], references: [id])
+  team2 Team @relation("Team2Matches", fields: [team2Id], references: [id])
+
+  winnerTeam Team? @relation("MatchWinner", fields: [winnerTeamId], references: [id])
+
+  players MatchPlayer[]
+  awards  MatchAward[]
+
+  // ---------------------------------------------------
+  // CRICKET
+  // ---------------------------------------------------
+
+  cricketInnings CricketInnings[]
+
+  // ---------------------------------------------------
+  // FOOTBALL
+  // ---------------------------------------------------
+
+  footballScore  FootballMatchScore?
+  footballEvents FootballEvent[]
+
+  // ---------------------------------------------------
+  // HANDBALL
+  // ---------------------------------------------------
+
+  handballScore  HandballMatchScore?
+  handballEvents HandballEvent[]
+
+  // ---------------------------------------------------
+  // THROWBALL
+  // ---------------------------------------------------
+
+  throwballScore  ThrowballMatchScore?
+  throwballEvents ThrowballEvent[]
+  throwballPoints ThrowballPoint[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId])
+  @@index([gameId])
+  @@index([team1Id])
+  @@index([team2Id])
+  @@index([winnerTeamId])
+}
+
+// =====================================================
+// MATCH PLAYERS
+// =====================================================
+
+model MatchPlayer {
+  id Int @id @default(autoincrement())
+
+  matchId  Int
+  playerId Int
+  teamId   Int
+
+  role PlayerMatchRole @default(PLAYER)
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([matchId, playerId])
+  @@index([matchId])
+  @@index([playerId])
+  @@index([teamId])
+}
+
+// =====================================================
+// MATCH AWARDS
+// =====================================================
+
+model MatchAward {
+  id Int @id @default(autoincrement())
+
+  matchId      Int
+  playerId     Int
+  tournamentId Int
+
+  awardType AwardType
+  reason    String?
+
+  match      Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player     Player     @relation("AwardedPlayer", fields: [playerId], references: [id])
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([matchId, awardType])
+  @@index([playerId])
+  @@index([tournamentId])
+}
+
+// =====================================================
+// CRICKET INNINGS
+// =====================================================
+
+model CricketInnings {
+  id Int @id @default(autoincrement())
+
+  matchId       Int
+  inningsNumber Int
+
+  battingTeamId Int
+  bowlingTeamId Int
+
+  totalRuns    Int @default(0)
+  totalWickets Int @default(0)
+
+  legalBalls Int @default(0)
+
+  match       Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  battingTeam Team  @relation("CricketBattingTeam", fields: [battingTeamId], references: [id])
+  bowlingTeam Team  @relation("CricketBowlingTeam", fields: [bowlingTeamId], references: [id])
+
+  ballEvents CricketBallEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId, inningsNumber])
+  @@index([matchId])
+  @@index([battingTeamId])
+  @@index([bowlingTeamId])
+}
+
+// =====================================================
+// CRICKET BALL EVENT
+// =====================================================
+
+model CricketBallEvent {
+  id Int @id @default(autoincrement())
+
+  inningsId Int
+
+  overNumber Int
+  ballNumber Int
+
+  strikerId    Int
+  nonStrikerId Int
+  bowlerId     Int
+
+  runsOffBat Int @default(0)
+  extraRuns  Int @default(0)
+  totalRuns  Int @default(0)
+
+  extraType CricketExtraType @default(NONE)
+
+  isLegalDelivery Boolean @default(true)
+  isWicket        Boolean @default(false)
+
+  dismissalType     CricketDismissalType?
+  dismissedPlayerId Int?
+  fielderId         Int?
+
+  innings CricketInnings @relation(fields: [inningsId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([inningsId])
+  @@index([strikerId])
+  @@index([nonStrikerId])
+  @@index([bowlerId])
+  @@index([dismissedPlayerId])
+  @@index([fielderId])
+}
+
+// =====================================================
+// FOOTBALL MATCH SCORE
+// =====================================================
+
+model FootballMatchScore {
+  id Int @id @default(autoincrement())
+
+  matchId Int
+  team1Id Int
+  team2Id Int
+
+  team1Score Int @default(0)
+  team2Score Int @default(0)
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  team1 Team @relation("FootballTeam1", fields: [team1Id], references: [id])
+  team2 Team @relation("FootballTeam2", fields: [team2Id], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId])
+}
+
+// =====================================================
+// FOOTBALL EVENT
+// =====================================================
+
+model FootballEvent {
+  id            Int                   @id @default(autoincrement())
+  matchId       Int
+  playerId      Int?
+  teamId        Int
+  eventType     FootballEventType
+  penaltyResult FootballPenaltyResult?
+  minute        Int?
+  description   String?
+
+  match Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player? @relation(fields: [playerId], references: [id])
+  team   Team   @relation("FootballEventTeam", fields: [teamId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([matchId])
+  @@index([playerId])
+  @@index([teamId])
+}
+// =====================================================
+// HANDBALL MATCH SCORE
+// =====================================================
+
+model HandballMatchScore {
+  id Int @id @default(autoincrement())
+
+  matchId Int
+  team1Id Int
+  team2Id Int
+
+  team1Score Int @default(0)
+  team2Score Int @default(0)
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  team1 Team @relation("HandballTeam1", fields: [team1Id], references: [id])
+  team2 Team @relation("HandballTeam2", fields: [team2Id], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId])
+}
+
+// =====================================================
+// HANDBALL EVENT
+// =====================================================
+
+model HandballEvent {
+  id Int @id @default(autoincrement())
+
+  matchId  Int
+  playerId Int?
+  teamId   Int
+
+  eventType HandballEventType
+  penaltyResult HandballPenaltyResult?
+  minute      Int?
+  description String?
+
+  match  Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player? @relation(fields: [playerId], references: [id])
+  team   Team    @relation("HandballEventTeam", fields: [teamId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([matchId])
+  @@index([playerId])
+  @@index([teamId])
+}
+
+// =====================================================
+// THROWBALL MATCH SCORE
+// =====================================================
+
+model ThrowballMatchScore {
+  id Int @id @default(autoincrement())
+
+  matchId Int @unique
+
+  team1Id Int
+  team2Id Int
+
+  team1Score Int @default(0)
+  team2Score Int @default(0)
+
+  currentSet Int @default(1)
+
+  team1Set1 Int @default(0)
+  team2Set1 Int @default(0)
+
+  team1SetsWon Int @default(0)
+  team2SetsWon Int @default(0)
+
+  status String @default("LIVE")
+
+  winnerTeamId Int?
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  team1 Team @relation("ThrowballTeam1", fields: [team1Id], references: [id])
+
+  team2 Team @relation("ThrowballTeam2", fields: [team2Id], references: [id])
+
+  winnerTeam Team? @relation("ThrowballWinner", fields: [winnerTeamId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([team1Id])
+  @@index([team2Id])
+}
+
+// =====================================================
+// THROWBALL EVENT
+// =====================================================
+
+model ThrowballEvent {
+  id Int @id @default(autoincrement())
+
+  matchId  Int
+  playerId Int?
+  teamId   Int
+
+  eventType ThrowballEventType
+
+  setNumber   Int?
+  description String?
+
+  match  Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player? @relation(fields: [playerId], references: [id])
+  team   Team    @relation("ThrowballEventTeam", fields: [teamId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([matchId])
+  @@index([playerId])
+  @@index([teamId])
+}
+
+model ThrowballPoint {
+  id          Int  @id @default(autoincrement())
+  matchId     Int
+  setNumber   Int?
+  pointNumber Int
+
+  winningTeamId Int
+
+  attackerId       Int?
+  opponentPlayerId Int?
+
+  pointReason String
+
+  createdAt DateTime @default(now())
+
+  match          Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  winningTeam    Team    @relation("ThrowballPointWinningTeam", fields: [winningTeamId], references: [id])
+  attacker       Player? @relation("ThrowballPointAttacker", fields: [attackerId], references: [id])
+  opponentPlayer Player? @relation("ThrowballPointOpponent", fields: [opponentPlayerId], references: [id])
+
+  @@index([matchId])
+  @@index([setNumber])
+  @@index([attackerId])
+  @@index([opponentPlayerId])
+}
+
+model CompetitionGameResult {
+  id Int @id @default(autoincrement())
+
+  gameId   Int
+  teamId   Int
+  playerId Int?
+
+  round    Int
+  position Int
+  points   Int
+
+  game   Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  team   Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  player Player? @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, round, position])
+  @@index([gameId])
+  @@index([teamId])
+  @@index([playerId])
+}
+
+model CompetitionGameParticipation {
+  id Int @id @default(autoincrement())
+
+  gameId Int
+  teamId Int
+
+  createdAt DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, teamId])
+  @@index([gameId])
+  @@index([teamId])
+}
