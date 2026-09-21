@@ -99,7 +99,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-72 bg-slate-900 text-white lg:block">
+    <aside className="hidden w-72 bg-slate-900 text-white">
       <div className="border-b border-slate-700 p-6">
         <h1 className="text-2xl font-bold text-blue-400">
           Sports Carnival

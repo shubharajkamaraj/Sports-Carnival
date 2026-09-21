@@ -43,6 +43,28 @@ type PlayerSportStats = {
   points: number;
 };
 
+type FootballHandballAwardPlayer = {
+  playerId: number;
+  playerName: string;
+  teamId: number;
+  teamName: string;
+  matches: number;
+  goals: number;
+};
+
+type FootballHandballAward = FootballHandballAwardPlayer & {
+  tiedPlayerCount: number;
+};
+
+type FootballHandballAwardResult = {
+  bestPlayer: FootballHandballAward | null;
+  tiedPlayers: FootballHandballAward[];
+  finalStarted: boolean;
+  finalCompleted: boolean;
+  finalTeamIds: number[];
+  highestGoals: number;
+};
+
 // =====================================================
 // CONSTANTS
 // =====================================================
@@ -100,19 +122,867 @@ function roundNumber(
 }
 
 // =====================================================
+// FOOTBALL / HANDBALL TEAM MATCH COUNT
+// =====================================================
+
+/*
+ * Counts the number of matches played by the player's
+ * TEAM.
+ *
+ * IMPORTANT:
+ *
+ * We do NOT count every League match.
+ *
+ * We only count matches where:
+ *
+ *   match.team1Id === player.teamId
+ *   OR
+ *   match.team2Id === player.teamId
+ *
+ * This fixes cases such as:
+ *
+ * Lisha:
+ *   Match #29 -> Victory Warriors vs Faith Strikers
+ *                NOT Christ Kingdom -> NOT counted
+ *
+ *   Match #30 -> Christ Kingdom vs Hope Warriors
+ *                Christ Kingdom -> counted
+ *
+ *   Match #31 -> Christ Kingdom vs Victory Warriors
+ *                Christ Kingdom -> counted
+ *
+ * Result:
+ *   Matches = 2
+ *
+ * The Set prevents the same match from being counted
+ * more than once.
+ */
+function getTeamMatchCount(
+  matches: any[],
+  sportType: "FOOTBALL" | "HANDBALL",
+  teamId: number,
+  finalMatchId?: number
+): number {
+  const matchIds = new Set<number>();
+
+  for (const match of matches) {
+    // -----------------------------------------------
+    // CORRECT SPORT
+    // -----------------------------------------------
+
+    if (
+      match.game?.sportType !== sportType
+    ) {
+      continue;
+    }
+
+    // -----------------------------------------------
+    // ONLY COMPLETED MATCHES
+    // -----------------------------------------------
+
+    if (
+      match.status !== "COMPLETED"
+    ) {
+      continue;
+    }
+
+    // -----------------------------------------------
+    // PLAYER'S TEAM MUST ACTUALLY BE IN THE MATCH
+    // -----------------------------------------------
+
+    if (
+      match.team1Id !== teamId &&
+      match.team2Id !== teamId
+    ) {
+      continue;
+    }
+
+    // -----------------------------------------------
+    // LEAGUE MATCH
+    // -----------------------------------------------
+
+    if (
+      match.stage === "LEAGUE"
+    ) {
+      matchIds.add(match.id);
+      continue;
+    }
+
+    // -----------------------------------------------
+    // CURRENT FINAL
+    // -----------------------------------------------
+
+    if (
+      match.stage === "FINAL" &&
+      match.id === finalMatchId
+    ) {
+      matchIds.add(match.id);
+    }
+  }
+
+  return matchIds.size;
+}
+
+// =====================================================
+// FOOTBALL / HANDBALL AWARD LOGIC
+// =====================================================
+
+function calculateFootballHandballAward(
+  playersMap: Map<
+    number,
+    PlayerSportStats
+  >,
+  matches: any[],
+  sportType: "FOOTBALL" | "HANDBALL"
+): FootballHandballAwardResult {
+  // ===================================================
+  // FIND FINAL
+  // ===================================================
+
+  /*
+   * FINAL may be:
+   * - UPCOMING
+   * - LIVE
+   * - COMPLETED
+   */
+
+  const finalMatch =
+    matches
+      .filter(
+        (match) =>
+          match.game?.sportType ===
+            sportType &&
+          match.stage === "FINAL"
+      )
+      .sort(
+        (a, b) =>
+          b.id - a.id
+      )[0] ?? null;
+
+  // ===================================================
+  // NO FINAL CREATED YET
+  // ===================================================
+
+  if (!finalMatch) {
+    const leagueStats =
+      new Map<
+        number,
+        FootballHandballAwardPlayer
+      >();
+
+    for (const match of matches) {
+      if (
+        match.game?.sportType !==
+          sportType ||
+        match.stage !== "LEAGUE" ||
+        match.status !== "COMPLETED"
+      ) {
+        continue;
+      }
+
+      const events =
+        sportType === "FOOTBALL"
+          ? match.footballEvents
+          : match.handballEvents;
+
+      for (const event of events) {
+        if (
+          event.eventType !== "GOAL" ||
+          !event.playerId
+        ) {
+          continue;
+        }
+
+        const player =
+          playersMap.get(
+            event.playerId
+          );
+
+        if (!player) {
+          continue;
+        }
+
+        let stats =
+          leagueStats.get(
+            player.playerId
+          );
+
+        if (!stats) {
+          stats = {
+            playerId:
+              player.playerId,
+
+            playerName:
+              player.playerName,
+
+            teamId:
+              player.teamId,
+
+            teamName:
+              player.teamName,
+
+            matches: 0,
+
+            goals: 0,
+          };
+
+          leagueStats.set(
+            player.playerId,
+            stats
+          );
+        }
+
+        stats.goals += 1;
+      }
+    }
+
+    // =================================================
+    // FIX: CALCULATE TEAM MATCH COUNT
+    // =================================================
+
+    for (
+      const player of
+      leagueStats.values()
+    ) {
+      player.matches =
+        getTeamMatchCount(
+          matches,
+          sportType,
+          player.teamId
+        );
+    }
+
+    const leaderboard =
+      Array.from(
+        leagueStats.values()
+      )
+        .map((player) => ({
+          ...player,
+          tiedPlayerCount: 1,
+        }))
+        .sort((a, b) => {
+          if (
+            b.goals !==
+            a.goals
+          ) {
+            return (
+              b.goals -
+              a.goals
+            );
+          }
+
+          return (
+            a.playerName.localeCompare(
+              b.playerName
+            )
+          );
+        });
+
+    const highestGoals =
+      leaderboard[0]?.goals ?? 0;
+
+    const tiedPlayers =
+      leaderboard.filter(
+        (player) =>
+          player.goals ===
+          highestGoals
+      );
+
+    return {
+      bestPlayer:
+        tiedPlayers[0] ??
+        null,
+
+      tiedPlayers,
+
+      finalStarted: false,
+
+      finalCompleted: false,
+
+      finalTeamIds: [],
+
+      highestGoals,
+    };
+  }
+
+  // ===================================================
+  // FINAL EXISTS
+  // ===================================================
+
+  const finalStarted =
+    finalMatch.status ===
+      "LIVE" ||
+    finalMatch.status ===
+      "COMPLETED";
+
+  const finalCompleted =
+    finalMatch.status ===
+    "COMPLETED";
+
+  const finalTeamIds = [
+    finalMatch.team1Id,
+    finalMatch.team2Id,
+  ];
+
+  // ===================================================
+  // FINAL NOT STARTED
+  // ===================================================
+
+  if (!finalStarted) {
+    const leagueStats =
+      new Map<
+        number,
+        FootballHandballAwardPlayer
+      >();
+
+    for (const match of matches) {
+      if (
+        match.game?.sportType !==
+          sportType ||
+        match.stage !== "LEAGUE" ||
+        match.status !== "COMPLETED"
+      ) {
+        continue;
+      }
+
+      const events =
+        sportType === "FOOTBALL"
+          ? match.footballEvents
+          : match.handballEvents;
+
+      for (const event of events) {
+        if (
+          event.eventType !== "GOAL" ||
+          !event.playerId
+        ) {
+          continue;
+        }
+
+        const player =
+          playersMap.get(
+            event.playerId
+          );
+
+        if (!player) {
+          continue;
+        }
+
+        let stats =
+          leagueStats.get(
+            player.playerId
+          );
+
+        if (!stats) {
+          stats = {
+            playerId:
+              player.playerId,
+
+            playerName:
+              player.playerName,
+
+            teamId:
+              player.teamId,
+
+            teamName:
+              player.teamName,
+
+            matches: 0,
+
+            goals: 0,
+          };
+
+          leagueStats.set(
+            player.playerId,
+            stats
+          );
+        }
+
+        stats.goals += 1;
+      }
+    }
+
+    // =================================================
+    // FIX: CALCULATE TEAM MATCH COUNT
+    // =================================================
+
+    for (
+      const player of
+      leagueStats.values()
+    ) {
+      player.matches =
+        getTeamMatchCount(
+          matches,
+          sportType,
+          player.teamId
+        );
+    }
+
+    const leaderboard =
+      Array.from(
+        leagueStats.values()
+      )
+        .map((player) => ({
+          ...player,
+          tiedPlayerCount: 1,
+        }))
+        .sort((a, b) => {
+          if (
+            b.goals !==
+            a.goals
+          ) {
+            return (
+              b.goals -
+              a.goals
+            );
+          }
+
+          return (
+            a.playerName.localeCompare(
+              b.playerName
+            )
+          );
+        });
+
+    const highestGoals =
+      leaderboard[0]?.goals ?? 0;
+
+    const tiedPlayers =
+      leaderboard.filter(
+        (player) =>
+          player.goals ===
+          highestGoals
+      );
+
+    return {
+      bestPlayer:
+        tiedPlayers[0] ??
+        null,
+
+      tiedPlayers,
+
+      finalStarted: false,
+
+      finalCompleted: false,
+
+      finalTeamIds,
+
+      highestGoals,
+    };
+  }
+
+  // ===================================================
+  // FINAL LIVE OR COMPLETED
+  // ===================================================
+
+  const statsMap =
+    new Map<
+      number,
+      FootballHandballAwardPlayer
+    >();
+
+  for (const match of matches) {
+    if (
+      match.game?.sportType !==
+      sportType
+    ) {
+      continue;
+    }
+
+    // ===============================================
+    // LEAGUE
+    // ===============================================
+
+    if (
+      match.stage ===
+        "LEAGUE" &&
+      match.status ===
+        "COMPLETED"
+    ) {
+      const events =
+        sportType === "FOOTBALL"
+          ? match.footballEvents
+          : match.handballEvents;
+
+      for (const event of events) {
+        if (
+          event.eventType !==
+            "GOAL" ||
+          !event.playerId
+        ) {
+          continue;
+        }
+
+        const player =
+          playersMap.get(
+            event.playerId
+          );
+
+        if (!player) {
+          continue;
+        }
+
+        if (
+          !finalTeamIds.includes(
+            player.teamId
+          )
+        ) {
+          continue;
+        }
+
+        let stats =
+          statsMap.get(
+            player.playerId
+          );
+
+        if (!stats) {
+          stats = {
+            playerId:
+              player.playerId,
+
+            playerName:
+              player.playerName,
+
+            teamId:
+              player.teamId,
+
+            teamName:
+              player.teamName,
+
+            matches: 0,
+
+            goals: 0,
+          };
+
+          statsMap.set(
+            player.playerId,
+            stats
+          );
+        }
+
+        stats.goals += 1;
+      }
+    }
+
+    // ===============================================
+    // FINAL
+    // ===============================================
+
+    if (
+      match.stage ===
+        "FINAL" &&
+      match.id ===
+        finalMatch.id &&
+      (
+        match.status ===
+          "LIVE" ||
+        match.status ===
+          "COMPLETED"
+      )
+    ) {
+      const events =
+        sportType === "FOOTBALL"
+          ? match.footballEvents
+          : match.handballEvents;
+
+      for (const event of events) {
+        if (
+          event.eventType !==
+            "GOAL" ||
+          !event.playerId
+        ) {
+          continue;
+        }
+
+        const player =
+          playersMap.get(
+            event.playerId
+          );
+
+        if (!player) {
+          continue;
+        }
+
+        if (
+          !finalTeamIds.includes(
+            player.teamId
+          )
+        ) {
+          continue;
+        }
+
+        let stats =
+          statsMap.get(
+            player.playerId
+          );
+
+        if (!stats) {
+          stats = {
+            playerId:
+              player.playerId,
+
+            playerName:
+              player.playerName,
+
+            teamId:
+              player.teamId,
+
+            teamName:
+              player.teamName,
+
+            matches: 0,
+
+            goals: 0,
+          };
+
+          statsMap.set(
+            player.playerId,
+            stats
+          );
+        }
+
+        stats.goals += 1;
+      }
+    }
+  }
+
+  // ===================================================
+  // FIX: CALCULATE TEAM MATCH COUNTS
+  // ===================================================
+
+  for (
+    const player of
+    statsMap.values()
+  ) {
+    player.matches =
+      getTeamMatchCount(
+        matches,
+        sportType,
+        player.teamId,
+        finalMatch.id
+      );
+  }
+
+  // ===================================================
+  // LEADERBOARD
+  // ===================================================
+
+  const leaderboard =
+    Array.from(
+      statsMap.values()
+    )
+      .map((player) => ({
+        ...player,
+        tiedPlayerCount: 1,
+      }))
+      .sort((a, b) => {
+        if (
+          b.goals !==
+          a.goals
+        ) {
+          return (
+            b.goals -
+            a.goals
+          );
+        }
+
+        return (
+          a.playerName.localeCompare(
+            b.playerName
+          )
+        );
+      });
+
+  // ===================================================
+  // NO GOALS
+  // ===================================================
+
+  if (
+    leaderboard.length ===
+      0
+  ) {
+    return {
+      bestPlayer: null,
+
+      tiedPlayers: [],
+
+      finalStarted: true,
+
+      finalCompleted,
+
+      finalTeamIds,
+
+      highestGoals: 0,
+    };
+  }
+
+  // ===================================================
+  // HIGHEST GOALS
+  // ===================================================
+
+  const highestGoals =
+    leaderboard[0].goals;
+
+  const tiedPlayers =
+    leaderboard
+      .filter(
+        (player) =>
+          player.goals ===
+          highestGoals
+      )
+      .map((player) => ({
+        ...player,
+        tiedPlayerCount:
+          1,
+      }));
+
+  // ===================================================
+  // ONLY ONE HIGHEST SCORER
+  // ===================================================
+
+  if (
+    tiedPlayers.length ===
+    1
+  ) {
+    return {
+      bestPlayer:
+        tiedPlayers[0],
+
+      tiedPlayers,
+
+      finalStarted: true,
+
+      finalCompleted,
+
+      finalTeamIds,
+
+      highestGoals,
+    };
+  }
+
+  // ===================================================
+  // MULTIPLE HIGHEST SCORERS
+  // ===================================================
+
+  const tiedTeamIds =
+    new Set(
+      tiedPlayers.map(
+        (player) =>
+          player.teamId
+      )
+    );
+
+  // ===================================================
+  // TIE FROM SAME TEAM
+  // ===================================================
+
+  if (
+    tiedTeamIds.size ===
+    1
+  ) {
+    const count =
+      tiedPlayers.length;
+
+    const sameTeamPlayers =
+      tiedPlayers.map(
+        (player) => ({
+          ...player,
+          tiedPlayerCount:
+            count,
+        })
+      );
+
+    return {
+      bestPlayer:
+        sameTeamPlayers[0],
+
+      tiedPlayers:
+        sameTeamPlayers,
+
+      finalStarted: true,
+
+      finalCompleted,
+
+      finalTeamIds,
+
+      highestGoals,
+    };
+  }
+
+  // ===================================================
+  // TIE FROM DIFFERENT FINAL TEAMS
+  // ===================================================
+
+  if (
+    finalCompleted &&
+    finalMatch.winnerTeamId
+  ) {
+    const winningPlayer =
+      tiedPlayers.find(
+        (player) =>
+          player.teamId ===
+          finalMatch.winnerTeamId
+      );
+
+    if (winningPlayer) {
+      return {
+        bestPlayer: {
+          ...winningPlayer,
+          tiedPlayerCount:
+            tiedPlayers.length,
+        },
+
+        tiedPlayers,
+
+        finalStarted: true,
+
+        finalCompleted: true,
+
+        finalTeamIds,
+
+        highestGoals,
+      };
+    }
+  }
+
+  // ===================================================
+  // FINAL LIVE / NO WINNER YET
+  // ===================================================
+
+  return {
+    bestPlayer: null,
+
+    tiedPlayers,
+
+    finalStarted: true,
+
+    finalCompleted,
+
+    finalTeamIds,
+
+    highestGoals,
+  };
+}
+
+// =====================================================
 // GET OVERALL AWARDS
 // =====================================================
 
 export async function GET() {
   try {
     // =================================================
-    // GET COMPLETED MATCHES
+    // GET MATCHES
     // =================================================
 
     const matches =
       await prisma.match.findMany({
         where: {
-          status: "COMPLETED",
+          status: {
+            in: [
+              "UPCOMING",
+              "LIVE",
+              "COMPLETED",
+            ],
+          },
         },
 
         include: {
@@ -171,6 +1041,17 @@ export async function GET() {
       });
 
     // =====================================================
+    // COMPLETED MATCHES
+    // =====================================================
+
+    const completedMatches =
+      matches.filter(
+        (match) =>
+          match.status ===
+          "COMPLETED"
+      );
+
+    // =====================================================
     // STAT MAPS
     // =====================================================
 
@@ -205,7 +1086,7 @@ export async function GET() {
       >();
 
     // =====================================================
-    // PLAYER IDs USED IN COMPLETED MATCHES
+    // PLAYER IDs USED IN MATCHES
     // =====================================================
 
     const playerIds =
@@ -384,10 +1265,14 @@ export async function GET() {
       );
 
     // =====================================================
-    // PROCESS MATCHES
+    // PROCESS COMPLETED MATCHES
     // =====================================================
 
-    for (const match of matches) {
+    /*
+     * CRICKET AND THROWBALL LOGIC BELOW IS KEPT AS-IS.
+     */
+
+    for (const match of completedMatches) {
       const sport =
         match.game.sportType;
 
@@ -452,51 +1337,16 @@ export async function GET() {
                 );
               }
 
-              // =========================================
-              // MATCH
-              // =========================================
-
               stats.matches.add(
                 match.id
               );
-
-              // =========================================
-              // INNINGS
-              // =========================================
 
               stats.innings.add(
                 innings.id
               );
 
-              // =========================================
-              // RUNS
-              // =========================================
-
-              /*
-               * Only runs from the bat.
-               *
-               * Extras are not batter runs.
-               */
-
               stats.runs +=
                 ball.runsOffBat;
-
-              // =========================================
-              // BALLS
-              // =========================================
-
-              /*
-               * Batter ball faced:
-               *
-               * Legal delivery = 1 ball.
-               *
-               * Wide = not counted.
-               *
-               * No-ball = not counted.
-               *
-               * Bye / leg-bye are legal deliveries,
-               * therefore count as balls faced.
-               */
 
               if (
                 ball.isLegalDelivery
@@ -553,17 +1403,9 @@ export async function GET() {
               );
             }
 
-            // =============================================
-            // MATCH
-            // =============================================
-
             bowlerStats.matches.add(
               match.id
             );
-
-            // =============================================
-            // LEGAL BALLS
-            // =============================================
 
             if (
               ball.isLegalDelivery
@@ -571,17 +1413,6 @@ export async function GET() {
               bowlerStats.legalBalls +=
                 1;
             }
-
-            // =============================================
-            // RUNS CONCEDED
-            // =============================================
-
-            /*
-             * Bye and leg-bye are not charged
-             * to the bowler.
-             *
-             * Wide and no-ball extras ARE charged.
-             */
 
             if (
               ball.extraType !==
@@ -593,15 +1424,6 @@ export async function GET() {
                 ball.runsOffBat +
                 ball.extraRuns;
             }
-
-            // =============================================
-            // WICKETS
-            // =============================================
-
-            /*
-             * Count only dismissals credited
-             * to the bowler.
-             */
 
             const dismissalType =
               ball.dismissalType;
@@ -615,36 +1437,6 @@ export async function GET() {
             ) {
               bowlerStats.wickets +=
                 1;
-
-              // ===========================================
-              // DEBUG
-              // ===========================================
-
-              console.log(
-                "CRICKET WICKET COUNTED:",
-                {
-                  matchId:
-                    match.id,
-
-                  ballId:
-                    ball.id,
-
-                  bowlerId:
-                    bowler.id,
-
-                  bowlerName:
-                    bowler.name,
-
-                  dismissedPlayerId:
-                    ball.dismissedPlayerId,
-
-                  dismissalType:
-                    dismissalType,
-
-                  wickets:
-                    bowlerStats.wickets,
-                }
-              );
             }
           }
         }
@@ -661,18 +1453,6 @@ export async function GET() {
           const event of
           match.footballEvents
         ) {
-          /*
-           * Only normal GOAL events count.
-           *
-           * PENALTY GOAL -> excluded
-           *
-           * OWN GOAL -> excluded
-           *
-           * YELLOW CARD -> excluded
-           *
-           * RED CARD -> excluded
-           */
-
           if (
             event.eventType !==
               "GOAL" ||
@@ -743,12 +1523,6 @@ export async function GET() {
           const event of
           match.handballEvents
         ) {
-          /*
-           * Only normal goals count.
-           *
-           * Penalty goals excluded.
-           */
-
           if (
             event.eventType !==
               "GOAL" ||
@@ -871,12 +1645,6 @@ export async function GET() {
             match.id
           );
 
-          /*
-           * Each successful throwball point
-           * where this player is attacker
-           * contributes 1 point.
-           */
-
           stats.points +=
             1;
         }
@@ -925,7 +1693,6 @@ export async function GET() {
             ),
         }))
         .sort((a, b) => {
-          // 1. Runs
           if (
             b.runs !==
             a.runs
@@ -936,7 +1703,6 @@ export async function GET() {
             );
           }
 
-          // 2. Strike rate
           if (
             b.strikeRate !==
             a.strikeRate
@@ -947,7 +1713,6 @@ export async function GET() {
             );
           }
 
-          // 3. Innings
           if (
             b.innings !==
             a.innings
@@ -958,7 +1723,6 @@ export async function GET() {
             );
           }
 
-          // 4. Matches
           return (
             b.matches -
             a.matches
@@ -1013,7 +1777,6 @@ export async function GET() {
             ),
         }))
         .sort((a, b) => {
-          // 1. Wickets
           if (
             b.wickets !==
             a.wickets
@@ -1024,7 +1787,6 @@ export async function GET() {
             );
           }
 
-          // 2. Economy
           if (
             a.economy !==
             b.economy
@@ -1035,7 +1797,6 @@ export async function GET() {
             );
           }
 
-          // 3. Legal balls
           return (
             b.legalBalls -
             a.legalBalls
@@ -1070,7 +1831,6 @@ export async function GET() {
             stats.goals,
         }))
         .sort((a, b) => {
-          // 1. Goals
           if (
             b.goals !==
             a.goals
@@ -1081,7 +1841,6 @@ export async function GET() {
             );
           }
 
-          // 2. Matches
           return (
             b.matches -
             a.matches
@@ -1116,7 +1875,6 @@ export async function GET() {
             stats.goals,
         }))
         .sort((a, b) => {
-          // 1. Goals
           if (
             b.goals !==
             a.goals
@@ -1127,7 +1885,6 @@ export async function GET() {
             );
           }
 
-          // 2. Matches
           return (
             b.matches -
             a.matches
@@ -1162,7 +1919,6 @@ export async function GET() {
             stats.points,
         }))
         .sort((a, b) => {
-          // 1. Points
           if (
             b.points !==
             a.points
@@ -1173,12 +1929,198 @@ export async function GET() {
             );
           }
 
-          // 2. Matches
           return (
             b.matches -
             a.matches
           );
         });
+
+    // =====================================================
+    // CONVERT PLAYER MAPS FOR AWARD CALCULATION
+    // =====================================================
+
+    const footballAwardPlayers =
+      new Map<
+        number,
+        PlayerSportStats
+      >();
+
+    for (
+      const stats of
+      footballPlayers.values()
+    ) {
+      footballAwardPlayers.set(
+        stats.playerId,
+        {
+          ...stats,
+          matches:
+            new Set(
+              stats.matches
+            ),
+        }
+      );
+    }
+
+    const handballAwardPlayers =
+      new Map<
+        number,
+        PlayerSportStats
+      >();
+
+    for (
+      const stats of
+      handballPlayers.values()
+    ) {
+      handballAwardPlayers.set(
+        stats.playerId,
+        {
+          ...stats,
+          matches:
+            new Set(
+              stats.matches
+            ),
+        }
+      );
+    }
+
+    // =====================================================
+    // ADD PLAYERS FROM FINAL TEAMS
+    // =====================================================
+
+    for (const match of matches) {
+      if (
+        match.stage !==
+          "FINAL" ||
+        (
+          match.status !==
+            "LIVE" &&
+          match.status !==
+            "COMPLETED"
+        )
+      ) {
+        continue;
+      }
+
+      if (
+        match.game?.sportType ===
+        "FOOTBALL"
+      ) {
+        for (
+          const player of
+          players
+        ) {
+          if (
+            player.teamId !==
+              match.team1Id &&
+            player.teamId !==
+              match.team2Id
+          ) {
+            continue;
+          }
+
+          if (
+            !footballAwardPlayers.has(
+              player.id
+            )
+          ) {
+            footballAwardPlayers.set(
+              player.id,
+              {
+                playerId:
+                  player.id,
+
+                playerName:
+                  player.name,
+
+                teamId:
+                  player.teamId,
+
+                teamName:
+                  player.team.name,
+
+                matches:
+                  new Set<number>(),
+
+                goals: 0,
+
+                points: 0,
+              }
+            );
+          }
+        }
+      }
+
+      if (
+        match.game?.sportType ===
+        "HANDBALL"
+      ) {
+        for (
+          const player of
+          players
+        ) {
+          if (
+            player.teamId !==
+              match.team1Id &&
+            player.teamId !==
+              match.team2Id
+          ) {
+            continue;
+          }
+
+          if (
+            !handballAwardPlayers.has(
+              player.id
+            )
+          ) {
+            handballAwardPlayers.set(
+              player.id,
+              {
+                playerId:
+                  player.id,
+
+                playerName:
+                  player.name,
+
+                teamId:
+                  player.teamId,
+
+                teamName:
+                  player.team.name,
+
+                matches:
+                  new Set<number>(),
+
+                goals: 0,
+
+                points: 0,
+              }
+            );
+          }
+        }
+      }
+    }
+
+    // =====================================================
+    // FOOTBALL OVERALL AWARD
+    // =====================================================
+
+    const footballAward =
+      calculateFootballHandballAward(
+        footballAwardPlayers,
+        matches,
+        "FOOTBALL"
+      );
+
+    // =====================================================
+    // HANDBALL OVERALL AWARD
+    // =====================================================
+
+    const handballAward =
+      calculateFootballHandballAward(
+        handballAwardPlayers,
+        matches,
+        "HANDBALL"
+      );
 
     // =====================================================
     // BEST PLAYERS
@@ -1193,36 +2135,14 @@ export async function GET() {
       null;
 
     const bestFootballPlayer =
-      footballLeaderboard[0] ??
-      null;
+      footballAward.bestPlayer;
 
     const bestHandballPlayer =
-      handballLeaderboard[0] ??
-      null;
+      handballAward.bestPlayer;
 
     const bestThrowballPlayer =
       throwballLeaderboard[0] ??
       null;
-
-    // =====================================================
-    // DEBUG BOWLER LEADERBOARD
-    // =====================================================
-
-    console.log(
-      "==============================================="
-    );
-
-    console.log(
-      "CRICKET BOWLER LEADERBOARD"
-    );
-
-    console.log(
-      bowlerLeaderboard
-    );
-
-    console.log(
-      "==============================================="
-    );
 
     // =====================================================
     // RESPONSE
@@ -1233,10 +2153,10 @@ export async function GET() {
 
       summary: {
         completedMatches:
-          matches.length,
+          completedMatches.length,
 
         cricketMatches:
-          matches.filter(
+          completedMatches.filter(
             (match) =>
               match.game
                 .sportType ===
@@ -1244,7 +2164,7 @@ export async function GET() {
           ).length,
 
         footballMatches:
-          matches.filter(
+          completedMatches.filter(
             (match) =>
               match.game
                 .sportType ===
@@ -1252,7 +2172,7 @@ export async function GET() {
           ).length,
 
         handballMatches:
-          matches.filter(
+          completedMatches.filter(
             (match) =>
               match.game
                 .sportType ===
@@ -1260,7 +2180,7 @@ export async function GET() {
           ).length,
 
         throwballMatches:
-          matches.filter(
+          completedMatches.filter(
             (match) =>
               match.game
                 .sportType ===
@@ -1282,6 +2202,52 @@ export async function GET() {
         bestHandballPlayer,
 
         bestThrowballPlayer,
+
+        football: {
+          bestPlayer:
+            footballAward.bestPlayer,
+
+          tiedPlayers:
+            footballAward.tiedPlayers,
+
+          tiedPlayerCount:
+            footballAward.tiedPlayers.length,
+
+          finalStarted:
+            footballAward.finalStarted,
+
+          finalCompleted:
+            footballAward.finalCompleted,
+
+          finalTeamIds:
+            footballAward.finalTeamIds,
+
+          highestGoals:
+            footballAward.highestGoals,
+        },
+
+        handball: {
+          bestPlayer:
+            handballAward.bestPlayer,
+
+          tiedPlayers:
+            handballAward.tiedPlayers,
+
+          tiedPlayerCount:
+            handballAward.tiedPlayers.length,
+
+          finalStarted:
+            handballAward.finalStarted,
+
+          finalCompleted:
+            handballAward.finalCompleted,
+
+          finalTeamIds:
+            handballAward.finalTeamIds,
+
+          highestGoals:
+            handballAward.highestGoals,
+        },
       },
 
       // ===================================================
@@ -1306,10 +2272,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    // ===================================================
-    // ERROR
-    // ===================================================
-
     console.error(
       "OVERALL AWARDS ERROR:",
       error
