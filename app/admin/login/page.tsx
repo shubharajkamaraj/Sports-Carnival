@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Full browser navigation
-      window.location.href = "/admin/dashboard";
+      window.location.href = "/admin/intro";
     } catch (error) {
       console.error("LOGIN ERROR:", error);
 
