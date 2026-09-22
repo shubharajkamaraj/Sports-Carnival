@@ -116,7 +116,7 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen w-full bg-transparent p-6 text-white">
       <div className="mx-auto max-w-7xl">
 
         {/* ================================================= */}
@@ -126,11 +126,11 @@ export default function MatchesPage() {
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-3xl font-bold text-white">
               Matches
             </h1>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-300">
               Create and manage tournament matches
             </p>
           </div>
@@ -140,7 +140,7 @@ export default function MatchesPage() {
             <button
               type="button"
               onClick={loadMatches}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 font-medium text-slate-200 shadow-lg backdrop-blur-md transition hover:bg-white/15"
             >
               <RefreshCw size={18} />
 
@@ -152,7 +152,7 @@ export default function MatchesPage() {
               onClick={() =>
                 setAddOpen(true)
               }
-              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700"
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-medium text-white transition hover:bg-blue-500"
             >
               <Plus size={18} />
 
@@ -168,22 +168,26 @@ export default function MatchesPage() {
 
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
-          <div className="rounded-2xl border bg-white p-5">
-            <p className="text-sm text-slate-500">
+          {/* TOTAL */}
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md">
+            <p className="text-sm text-slate-400">
               Total Matches
             </p>
 
-            <p className="mt-1 text-3xl font-bold text-slate-900">
+            <p className="mt-1 text-3xl font-bold text-white">
               {matches.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border bg-white p-5">
-            <p className="text-sm text-slate-500">
+          {/* UPCOMING */}
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md">
+            <p className="text-sm text-slate-400">
               Upcoming
             </p>
 
-            <p className="mt-1 text-3xl font-bold text-blue-600">
+            <p className="mt-1 text-3xl font-bold text-blue-300">
               {
                 matches.filter(
                   (match) =>
@@ -193,12 +197,14 @@ export default function MatchesPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border bg-white p-5">
-            <p className="text-sm text-slate-500">
+          {/* LIVE */}
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md">
+            <p className="text-sm text-slate-400">
               Live
             </p>
 
-            <p className="mt-1 text-3xl font-bold text-red-600">
+            <p className="mt-1 text-3xl font-bold text-red-300">
               {
                 matches.filter(
                   (match) =>
@@ -208,12 +214,14 @@ export default function MatchesPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border bg-white p-5">
-            <p className="text-sm text-slate-500">
+          {/* COMPLETED */}
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md">
+            <p className="text-sm text-slate-400">
               Completed
             </p>
 
-            <p className="mt-1 text-3xl font-bold text-green-600">
+            <p className="mt-1 text-3xl font-bold text-emerald-300">
               {
                 matches.filter(
                   (match) =>
@@ -230,8 +238,8 @@ export default function MatchesPage() {
         {/* ================================================= */}
 
         {loading ? (
-          <div className="rounded-2xl border bg-white p-12 text-center">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-12 text-center shadow-lg backdrop-blur-md">
+            <p className="text-sm text-slate-300">
               Loading matches...
             </p>
           </div>
@@ -245,6 +253,7 @@ export default function MatchesPage() {
             // =================================================
             // VIEW SUMMARY
             // =================================================
+
             onViewSummary={(match) => {
 
               // -----------------------------------------------
@@ -261,9 +270,8 @@ export default function MatchesPage() {
 
                 return;
               }
-              
 
-                  // -----------------------------------------------
+              // -----------------------------------------------
               // HANDBALL
               // -----------------------------------------------
 
@@ -278,7 +286,7 @@ export default function MatchesPage() {
                 return;
               }
 
-                   // -----------------------------------------------
+              // -----------------------------------------------
               // THROWBALL
               // -----------------------------------------------
 
@@ -293,13 +301,12 @@ export default function MatchesPage() {
                 return;
               }
 
-
               // -----------------------------------------------
               // OTHER SPORTS
               // -----------------------------------------------
 
               router.push(
-                `/admin/matches/${match.id}/summary` //cricket for now
+                `/admin/matches/${match.id}/summary`
               );
             }}
           />

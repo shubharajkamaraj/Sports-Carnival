@@ -21,11 +21,11 @@ const categories = [
     name: "Women's",
     icon: "👩",
   },
-   {
+  {
     id: "OTHER",
     name: "Other",
     icon: "�",
-  }
+  },
 ];
 
 export default function ResultsPage() {
@@ -120,22 +120,22 @@ export default function ResultsPage() {
   // =====================================================
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen w-full bg-transparent p-6">
       <div className="mx-auto max-w-6xl">
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold text-white">
             Results
           </h1>
 
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-slate-300">
             Select a category to manage game
             results.
           </p>
         </div>
 
         {loading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-slate-500">
+          <div className="rounded-xl border border-white/10 bg-white/10 p-6 text-slate-300 shadow-lg backdrop-blur-md">
             Loading...
           </div>
         ) : (
@@ -158,22 +158,22 @@ export default function ResultsPage() {
                         category.id
                       )
                     }
-                    className="group rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg"
+                    className="group rounded-2xl border border-white/10 bg-white/10 p-6 text-left shadow-lg backdrop-blur-md transition hover:-translate-y-1 hover:border-blue-400/40 hover:bg-white/[0.14] hover:shadow-xl"
                   >
-                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-3xl">
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/15 text-3xl ring-1 ring-blue-400/20">
                       {category.icon}
                     </div>
 
-                    <h2 className="text-xl font-bold text-slate-900">
+                    <h2 className="text-xl font-bold text-white">
                       {category.name}
                     </h2>
 
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="mt-2 text-sm text-slate-400">
                       {categoryGames.length}{" "}
                       games
                     </p>
 
-                    <div className="mt-5 text-sm font-semibold text-blue-600">
+                    <div className="mt-5 text-sm font-semibold text-blue-300 transition group-hover:text-blue-200">
                       View games →
                     </div>
                   </button>

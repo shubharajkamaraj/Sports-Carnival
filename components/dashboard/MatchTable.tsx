@@ -44,28 +44,16 @@ export interface Match {
 
   matchNumber: number | null;
 
-  // =====================================================
-  // CURRENT MATCH STAGE
-  // =====================================================
-
   stage:
     | "LEAGUE"
     | "THIRD_PLACE"
     | "FINAL";
-
-  // =====================================================
-  // MATCH STATUS
-  // =====================================================
 
   status:
     | "UPCOMING"
     | "LIVE"
     | "COMPLETED"
     | "CANCELLED";
-
-  // =====================================================
-  // RESULT
-  // =====================================================
 
   result:
     | "TEAM1_WIN"
@@ -75,29 +63,13 @@ export interface Match {
     | "NO_RESULT"
     | null;
 
-  // =====================================================
-  // WINNER
-  // =====================================================
-
   winnerTeamId: number | null;
 
-  // =====================================================
-  // CRICKET OVERS
-  // =====================================================
-
   overs: number;
-
-  // =====================================================
-  // SCORES
-  // =====================================================
 
   team1Score: number;
 
   team2Score: number;
-
-  // =====================================================
-  // RELATIONS
-  // =====================================================
 
   tournament: Tournament;
 
@@ -167,9 +139,7 @@ export default function MatchTable({
 
       try {
         data = responseText
-          ? JSON.parse(
-              responseText
-            )
+          ? JSON.parse(responseText)
           : {};
       } catch {
         data = {};
@@ -232,14 +202,14 @@ export default function MatchTable({
   ) {
     switch (stage) {
       case "FINAL":
-        return "bg-amber-100 text-amber-700";
+        return "bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/20";
 
       case "THIRD_PLACE":
-        return "bg-purple-100 text-purple-700";
+        return "bg-purple-500/15 text-purple-200 ring-1 ring-purple-400/20";
 
       case "LEAGUE":
       default:
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-500/15 text-blue-200 ring-1 ring-blue-400/20";
     }
   }
 
@@ -252,17 +222,17 @@ export default function MatchTable({
   ) {
     switch (status) {
       case "LIVE":
-        return "bg-red-100 text-red-700";
+        return "bg-red-500/15 text-red-200 ring-1 ring-red-400/20";
 
       case "COMPLETED":
-        return "bg-green-100 text-green-700";
+        return "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/20";
 
       case "CANCELLED":
-        return "bg-slate-200 text-slate-600";
+        return "bg-white/10 text-slate-300 ring-1 ring-white/10";
 
       case "UPCOMING":
       default:
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-500/15 text-blue-200 ring-1 ring-blue-400/20";
     }
   }
 
@@ -272,12 +242,12 @@ export default function MatchTable({
 
   if (matches.length === 0) {
     return (
-      <div className="rounded-2xl border bg-white p-12 text-center">
-        <p className="text-lg font-semibold text-slate-700">
+      <div className="min-h-screen w-full rounded-2xl border border-white/10 bg-transparent p-12 text-center shadow-lg">
+        <p className="text-lg font-semibold text-white">
           No matches found
         </p>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-400">
           Create your first match to get started.
         </p>
       </div>
@@ -289,7 +259,7 @@ export default function MatchTable({
   // =====================================================
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <div className="min-h-screen overflow-hidden rounded-2xl border border-white/10 bg-transparent shadow-lg backdrop-blur-md">
 
       <div className="overflow-x-auto">
 
@@ -299,45 +269,31 @@ export default function MatchTable({
           {/* HEADER */}
           {/* ================================================= */}
 
-          <thead className="border-b bg-slate-50">
+          <thead className="border-b border-white/10 bg-slate-950/40">
 
             <tr>
 
-              {/* MATCH */}
-
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Match
               </th>
 
-              {/* GAME */}
-
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Game
               </th>
 
-              {/* TEAMS */}
-
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Teams
               </th>
 
-              {/* STAGE */}
-
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Stage
               </th>
 
-              {/* OVERS */}
-
-              {/* STATUS */}
-
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Status
               </th>
 
-              {/* ACTIONS */}
-
-              <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Actions
               </th>
 
@@ -349,14 +305,14 @@ export default function MatchTable({
           {/* BODY */}
           {/* ================================================= */}
 
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-white/10">
 
             {matches.map(
               (match) => (
 
                 <tr
                   key={match.id}
-                  className="transition hover:bg-slate-50"
+                  className="transition hover:bg-white/5"
                 >
 
                   {/* ========================================= */}
@@ -365,13 +321,13 @@ export default function MatchTable({
 
                   <td className="px-5 py-4">
 
-                    <div className="font-semibold text-slate-900">
+                    <div className="font-semibold text-white">
                       Match{" "}
                       {match.matchNumber ??
                         match.id}
                     </div>
 
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-500">
                       ID #{match.id}
                     </div>
 
@@ -383,12 +339,12 @@ export default function MatchTable({
 
                   <td className="px-5 py-4">
 
-                    <div className="font-medium text-slate-800">
+                    <div className="font-medium text-slate-200">
                       {match.game?.name ??
                         "—"}
                     </div>
 
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-500">
                       {match.tournament
                         ?.name ??
                         "—"}
@@ -402,16 +358,16 @@ export default function MatchTable({
 
                   <td className="px-5 py-4">
 
-                    <div className="font-medium text-slate-800">
+                    <div className="font-medium text-slate-200">
                       {match.team1?.name ??
                         "—"}
                     </div>
 
-                    <div className="my-1 text-xs font-medium text-slate-400">
+                    <div className="my-1 text-xs font-medium text-slate-500">
                       VS
                     </div>
 
-                    <div className="font-medium text-slate-800">
+                    <div className="font-medium text-slate-200">
                       {match.team2?.name ??
                         "—"}
                     </div>
@@ -437,12 +393,6 @@ export default function MatchTable({
                   </td>
 
                   {/* ========================================= */}
-                  {/* OVERS */}
-                  {/* ========================================= */}
-
-                
-
-                  {/* ========================================= */}
                   {/* STATUS */}
                   {/* ========================================= */}
 
@@ -466,9 +416,7 @@ export default function MatchTable({
 
                     <div className="flex items-center justify-end gap-2">
 
-                      {/* ================================= */}
                       {/* START MATCH */}
-                      {/* ================================= */}
 
                       <button
                         type="button"
@@ -483,7 +431,7 @@ export default function MatchTable({
                           match.status ===
                             "CANCELLED"
                         }
-                        className="rounded-lg p-2 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-lg p-2 text-emerald-300 transition hover:bg-emerald-500/10 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Start Match"
                       >
                         <Play
@@ -491,9 +439,7 @@ export default function MatchTable({
                         />
                       </button>
 
-                      {/* ================================= */}
                       {/* VIEW SUMMARY */}
-                      {/* ================================= */}
 
                       {match.status ===
                         "COMPLETED" && (
@@ -504,15 +450,13 @@ export default function MatchTable({
                               match
                             )
                           }
-                          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
                         >
                           🏆 View Summary
                         </button>
                       )}
 
-                      {/* ================================= */}
                       {/* EDIT */}
-                      {/* ================================= */}
 
                       <button
                         type="button"
@@ -523,7 +467,7 @@ export default function MatchTable({
                           match.status ===
                           "LIVE"
                         }
-                        className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-lg p-2 text-blue-300 transition hover:bg-blue-500/10 hover:text-blue-200 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Edit Match"
                       >
                         <Pencil
@@ -531,9 +475,7 @@ export default function MatchTable({
                         />
                       </button>
 
-                      {/* ================================= */}
                       {/* DELETE */}
-                      {/* ================================= */}
 
                       <button
                         type="button"
@@ -546,7 +488,7 @@ export default function MatchTable({
                           match.status ===
                           "LIVE"
                         }
-                        className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-lg p-2 text-red-300 transition hover:bg-red-500/10 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Delete Match"
                       >
                         <Trash2
@@ -559,7 +501,6 @@ export default function MatchTable({
                   </td>
 
                 </tr>
-
               )
             )}
 

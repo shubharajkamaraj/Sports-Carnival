@@ -122,249 +122,248 @@ export default function GameTable() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen w-full bg-transparent p-6 text-white">
+      <div className="space-y-6">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+        {/* Header */}
 
-        <div>
-          <h1 className="text-3xl font-bold">
-            Games
-          </h1>
+        <div className="flex items-center justify-between">
 
-          <p className="mt-1 text-gray-500">
-            Manage sports games for the carnival
-          </p>
-        </div>
+          <div>
+            <h1 className="text-3xl font-bold text-white">
+              Games
+            </h1>
 
-        <button
-          onClick={() => setOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-white hover:bg-blue-700"
-        >
-          <Plus size={18} />
-          Add Game
-        </button>
-
-      </div>
-
-      {/* Statistics */}
-      <div className="grid gap-6 md:grid-cols-3">
-
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <div className="flex items-center gap-4">
-
-            <div className="rounded-xl bg-blue-100 p-3 text-blue-600">
-              <Trophy size={26} />
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-500">
-                Total Games
-              </p>
-
-              <p className="text-3xl font-bold">
-                {games.length}
-              </p>
-            </div>
-
+            <p className="mt-1 text-sm text-slate-300">
+              Manage sports games for the carnival
+            </p>
           </div>
+
+          <button
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-500"
+          >
+            <Plus size={18} />
+            Add Game
+          </button>
+
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <p className="text-sm text-gray-500">
-            Outdoor Games
-          </p>
+        {/* Statistics */}
 
-          <p className="mt-2 text-3xl font-bold">
-            {
-              games.filter(
-                (game) =>
-                  game.category === "Outdoor"
-              ).length
+        <div className="grid gap-6 md:grid-cols-3">
+
+          {/* Total Games */}
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 shadow-lg backdrop-blur-md">
+            <div className="flex items-center gap-4">
+
+              <div className="rounded-xl bg-blue-500/15 p-3 text-blue-300 ring-1 ring-blue-400/20">
+                <Trophy size={26} />
+              </div>
+
+              <div>
+                <p className="text-sm text-slate-400">
+                  Total Games
+                </p>
+
+                <p className="text-3xl font-bold text-white">
+                  {games.length}
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Outdoor Games */}
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 shadow-lg backdrop-blur-md">
+            <p className="text-sm text-slate-400">
+              Outdoor Games
+            </p>
+
+            <p className="mt-2 text-3xl font-bold text-white">
+              {
+                games.filter(
+                  (game) =>
+                    game.category === "Outdoor"
+                ).length
+              }
+            </p>
+          </div>
+
+          {/* Indoor Games */}
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 shadow-lg backdrop-blur-md">
+            <p className="text-sm text-slate-400">
+              Indoor Games
+            </p>
+
+            <p className="mt-2 text-3xl font-bold text-white">
+              {
+                games.filter(
+                  (game) =>
+                    game.category === "Indoor"
+                ).length
+              }
+            </p>
+          </div>
+
+        </div>
+
+        {/* Search */}
+
+        <div className="relative max-w-md">
+
+          <Search
+            size={18}
+            className="absolute left-4 top-3.5 text-slate-400"
+          />
+
+          <input
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
             }
-          </p>
+            placeholder="Search games..."
+            className="w-full rounded-xl border border-white/10 bg-white/10 py-3 pl-10 pr-4 text-white placeholder:text-slate-400 outline-none backdrop-blur-md transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
+          />
+
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <p className="text-sm text-gray-500">
-            Indoor Games
-          </p>
+        {/* Table */}
 
-          <p className="mt-2 text-3xl font-bold">
-            {
-              games.filter(
-                (game) =>
-                  game.category === "Indoor"
-              ).length
-            }
-          </p>
-        </div>
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
 
-      </div>
+          <div className="overflow-x-auto">
 
-      {/* Search */}
-      <div className="relative max-w-md">
+            <table className="w-full">
 
-        <Search
-          size={18}
-          className="absolute left-4 top-3.5 text-gray-400"
-        />
+              <thead className="border-b border-white/10 bg-slate-950/40">
 
-        <input
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          placeholder="Search games..."
-          className="w-full rounded-xl border py-3 pl-10 outline-none focus:ring-2 focus:ring-blue-500"
-        />
+                <tr>
 
-      </div>
+                  <th className="p-4 text-left text-sm font-semibold text-slate-300">
+                    Game
+                  </th>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-2xl bg-white shadow">
-
-        <table className="w-full">
-
-          <thead className="bg-slate-100">
-
-            <tr>
-              <th className="p-4 text-left">
-                Game
-              </th>
-
-              <th className="p-4 text-left">
-                Category
-              </th>
-
-              <th className="p-4 text-center">
-                Team Size
-              </th>
-
-              <th className="p-4 text-left">
-                Venue
-              </th>
-
-              <th className="p-4 text-center">
-                Actions
-              </th>
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="p-8 text-center text-gray-500"
-                >
-                  Loading games...
-                </td>
-              </tr>
-            ) : filteredGames.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="p-8 text-center text-gray-500"
-                >
-                  No games found.
-                </td>
-              </tr>
-            ) : (
-              filteredGames.map((game) => (
-                <tr
-                  key={game.id}
-                  className="border-b hover:bg-slate-50"
-                >
-
-                  <td className="p-4 font-medium">
-                    {game.name}
-                  </td>
-
-                  <td className="p-4">
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700">
-                      {game.category}
-                    </span>
-                  </td>
-
-                  <td className="p-4 text-center">
-                    {game.teamSize}
-                  </td>
-
-                  <td className="p-4">
-                    {game.venue}
-                  </td>
-
-                  <td className="p-4">
-
-                    <div className="flex justify-center gap-2">
-
-                      {/* Edit */}
-                      <button
-                        onClick={() =>
-                          editGame(game)
-                        }
-                        className="rounded-lg bg-green-100 p-2 text-green-700 hover:bg-green-200"
-                      >
-                        <Pencil size={18} />
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() =>
-                          openDeleteModal(game.id)
-                        }
-                        className="rounded-lg bg-red-100 p-2 text-red-700 hover:bg-red-200"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-
-                    </div>
-
-                  </td>
+                  <th className="p-4 text-center text-sm font-semibold text-slate-300">
+                    Actions
+                  </th>
 
                 </tr>
-              ))
-            )}
 
-          </tbody>
+              </thead>
 
-        </table>
+              <tbody className="divide-y divide-white/10">
+
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="p-8 text-center text-slate-400"
+                    >
+                      Loading games...
+                    </td>
+                  </tr>
+                ) : filteredGames.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="p-8 text-center text-slate-400"
+                    >
+                      No games found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredGames.map((game) => (
+                    <tr
+                      key={game.id}
+                      className="border-b border-white/10 transition hover:bg-white/5"
+                    >
+
+                      <td className="p-4 font-medium text-white">
+                        {game.name}
+                      </td>
+
+                      <td className="p-4">
+
+                        <div className="flex justify-center gap-2">
+
+                          {/* Edit */}
+
+                          <button
+                            onClick={() =>
+                              editGame(game)
+                            }
+                            className="rounded-lg bg-emerald-500/15 p-2 text-emerald-300 ring-1 ring-emerald-400/20 transition hover:bg-emerald-500/25"
+                          >
+                            <Pencil size={18} />
+                          </button>
+
+                          {/* Delete */}
+
+                          <button
+                            onClick={() =>
+                              openDeleteModal(
+                                game.id
+                              )
+                            }
+                            className="rounded-lg bg-red-500/15 p-2 text-red-300 ring-1 ring-red-400/20 transition hover:bg-red-500/25"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+
+                        </div>
+
+                      </td>
+
+                    </tr>
+                  ))
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+        {/* Add Game */}
+
+        <AddGameForm
+          open={open}
+          onClose={() => setOpen(false)}
+          onGameAdded={handleGameAdded}
+        />
+
+        {/* Edit Game */}
+
+        <EditGameForm
+          open={editOpen}
+          onClose={() => {
+            setEditOpen(false);
+            setSelectedGame(null);
+          }}
+          game={selectedGame}
+          onUpdated={loadGames}
+        />
+
+        {/* Delete Confirmation */}
+
+        <DeleteModal
+          open={deleteOpen}
+          title="Delete Game"
+          description="Are you sure you want to delete this game? This action cannot be undone."
+          onCancel={() => {
+            setDeleteOpen(false);
+            setDeleteId(null);
+          }}
+          onConfirm={deleteGame}
+        />
 
       </div>
-
-      {/* Add Game */}
-      <AddGameForm
-        open={open}
-        onClose={() => setOpen(false)}
-        onGameAdded={handleGameAdded}
-      />
-
-      {/* Edit Game */}
-      <EditGameForm
-        open={editOpen}
-        onClose={() => {
-          setEditOpen(false);
-          setSelectedGame(null);
-        }}
-        game={selectedGame}
-        onUpdated={loadGames}
-      />
-
-      {/* Delete Confirmation */}
-      <DeleteModal
-        open={deleteOpen}
-        title="Delete Game"
-        description="Are you sure you want to delete this game? This action cannot be undone."
-        onCancel={() => {
-          setDeleteOpen(false);
-          setDeleteId(null);
-        }}
-        onConfirm={deleteGame}
-      />
-
     </div>
   );
 }

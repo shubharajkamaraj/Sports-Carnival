@@ -57,16 +57,11 @@ type ApiResponse = {
   success: boolean;
   error?: string;
   message?: string;
-
   games?: Game[];
   teams?: Team[];
-
   latestRound?: number;
-
   assignments?: SavedAssignment[];
-
   rounds?: Round[];
-
   round?: number;
 };
 
@@ -96,23 +91,6 @@ const POSITIONS = [
     short: "4th",
   },
 ];
-
-/*
- * Point dropdown options.
- *
- * We deliberately provide a broad set because different
- * Sports Carnival games can use different scoring systems.
- *
- * Examples:
- *
- * Cricket:
- * Winner = 200
- *
- * Junior Kids:
- * Winner = 50
- *
- * The admin chooses the actual value.
- */
 
 const POINT_OPTIONS = [
   0,
@@ -227,12 +205,6 @@ export default function PointsAssignmentPage() {
     loadInitialData();
   }, []);
 
-  /*
-   * -------------------------------------------------------
-   * LOAD INITIAL DATA
-   * -------------------------------------------------------
-   */
-
   async function loadInitialData() {
     try {
       setLoading(true);
@@ -319,11 +291,6 @@ export default function PointsAssignmentPage() {
         data.rounds ?? [];
 
       setRounds(loadedRounds);
-
-      /*
-       * New round is automatically one greater
-       * than the latest existing round.
-       */
 
       const nextRound =
         (data.latestRound ?? 0) + 1;
@@ -416,10 +383,6 @@ export default function PointsAssignmentPage() {
     setError("");
     setSuccess("");
 
-    /*
-     * Game required
-     */
-
     if (!gameId) {
       setError(
         "Please select a game first."
@@ -427,20 +390,12 @@ export default function PointsAssignmentPage() {
       return;
     }
 
-    /*
-     * Round required
-     */
-
     if (!round) {
       setError(
         "Please enter a round number."
       );
       return;
     }
-
-    /*
-     * At least one team
-     */
 
     const activeAssignments =
       assignments.filter(
@@ -454,10 +409,6 @@ export default function PointsAssignmentPage() {
       );
       return;
     }
-
-    /*
-     * Every selected team needs points.
-     */
 
     for (const item of activeAssignments) {
       if (
@@ -513,11 +464,6 @@ export default function PointsAssignmentPage() {
           "Points assigned successfully."
       );
 
-      /*
-       * Reload rounds so the new round appears
-       * immediately.
-       */
-
       const refreshResponse =
         await fetch(
           `/api/points-assignment?gameId=${gameId}`,
@@ -540,10 +486,6 @@ export default function PointsAssignmentPage() {
         const nextRound =
           (refreshData.latestRound ?? 0) +
           1;
-
-        /*
-         * Reset form for the next round.
-         */
 
         setRound(
           String(nextRound)
@@ -593,37 +535,15 @@ export default function PointsAssignmentPage() {
 
   /*
    * -------------------------------------------------------
-   * TEAM DISPLAY
-   * -------------------------------------------------------
-   */
-
-  function getTeamName(
-    teamId: number | null
-  ) {
-    if (teamId === null) {
-      return "Not Applicable";
-    }
-
-    return (
-      teams.find(
-        (team) =>
-          team.id === teamId
-      )?.name ??
-      "Unknown Team"
-    );
-  }
-
-  /*
-   * -------------------------------------------------------
    * LOADING
    * -------------------------------------------------------
    */
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="min-h-screen w-full bg-transparent p-6">
         <div className="flex min-h-[500px] items-center justify-center">
-          <div className="flex items-center gap-3 text-slate-600">
+          <div className="flex items-center gap-3 text-white">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="font-semibold">
               Loading points assignment...
@@ -641,27 +561,27 @@ export default function PointsAssignmentPage() {
    */
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <main className="min-h-screen w-full bg-transparent p-4 md:p-6">
       <div className="mx-auto max-w-7xl">
+
         {/* =================================================
             HEADER
         ================================================= */}
 
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+            <div className="mb-2 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white shadow-sm ring-1 ring-white/10">
                 <Trophy className="h-5 w-5" />
               </div>
 
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900">
+                <h1 className="text-2xl font-black tracking-tight text-white">
                   Points Assignment
                 </h1>
 
-                <p className="text-sm font-medium text-slate-500">
-                  Assign tournament points to
-                  game positions
+                <p className="text-sm font-medium text-slate-300">
+                  Assign tournament points to game positions
                 </p>
               </div>
             </div>
@@ -673,13 +593,13 @@ export default function PointsAssignmentPage() {
         ================================================= */}
 
         {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <div className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-200">
             <Check className="h-4 w-4" />
             {success}
           </div>
@@ -689,20 +609,21 @@ export default function PointsAssignmentPage() {
             GAME SELECTOR
         ================================================= */}
 
-        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="mb-5 rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md">
           <div className="mb-4 flex items-center gap-2">
-            <Award className="h-5 w-5 text-slate-700" />
+            <Award className="h-5 w-5 text-white" />
 
-            <h2 className="font-black text-slate-900">
+            <h2 className="font-black text-white">
               Select Game
             </h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+
             {/* GAME */}
 
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-300">
                 Game / Competition
               </label>
 
@@ -714,9 +635,12 @@ export default function PointsAssignmentPage() {
                       event.target.value
                     )
                   }
-                  className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm font-bold text-slate-800 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                  className="w-full appearance-none rounded-xl border border-white/20 bg-white/10 px-4 py-3 pr-10 text-sm font-bold text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                 >
-                  <option value="">
+                  <option
+                    value=""
+                    className="bg-slate-900 text-white"
+                  >
                     Select Game
                   </option>
 
@@ -724,6 +648,7 @@ export default function PointsAssignmentPage() {
                     <option
                       key={game.id}
                       value={game.id}
+                      className="bg-slate-900 text-white"
                     >
                       {game.name}
                       {game.category
@@ -735,14 +660,14 @@ export default function PointsAssignmentPage() {
                   ))}
                 </select>
 
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
               </div>
             </div>
 
             {/* ROUND */}
 
             <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-300">
                 Round
               </label>
 
@@ -757,25 +682,25 @@ export default function PointsAssignmentPage() {
                 }
                 disabled={!gameId}
                 placeholder="Round"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white placeholder:text-slate-400 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 disabled:bg-white/5 disabled:text-white/40"
               />
             </div>
           </div>
 
           {selectedGame && (
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-200 ring-1 ring-white/10">
                 {selectedGame.name}
               </span>
 
               {selectedGame.sportType && (
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-200 ring-1 ring-blue-400/20">
                   {selectedGame.sportType}
                 </span>
               )}
 
               {selectedGame.category && (
-                <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">
+                <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-bold text-purple-200 ring-1 ring-purple-400/20">
                   {formatCategory(
                     selectedGame.category
                   )}
@@ -789,20 +714,21 @@ export default function PointsAssignmentPage() {
             ASSIGNMENT FORM
         ================================================= */}
 
-        <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-900 px-5 py-4 text-white">
+        <section className="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
+
+          <div className="border-b border-white/10 bg-slate-950/40 px-5 py-4 text-white">
             <h2 className="font-black">
               Assign Points
             </h2>
 
             <p className="mt-1 text-xs font-medium text-slate-300">
-              The same team can be selected in
-              multiple positions.
+              The same team can be selected in multiple positions.
             </p>
           </div>
 
           <div className="p-5">
             <div className="grid gap-4">
+
               {POSITIONS.map((position) => {
                 const assignment =
                   assignments.find(
@@ -814,21 +740,22 @@ export default function PointsAssignmentPage() {
                 return (
                   <div
                     key={position.position}
-                    className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[190px_1fr_220px]"
+                    className="grid gap-4 rounded-xl border border-white/10 bg-white/5 p-4 md:grid-cols-[190px_1fr_220px]"
                   >
+
                     {/* POSITION */}
 
                     <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-slate-700 shadow-sm ring-1 ring-slate-200">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-sm font-black text-white shadow-sm ring-1 ring-white/10">
                         {position.short}
                       </div>
 
                       <div>
-                        <p className="text-sm font-black text-slate-900">
+                        <p className="text-sm font-black text-white">
                           {position.label}
                         </p>
 
-                        <p className="text-xs font-medium text-slate-500">
+                        <p className="text-xs font-medium text-slate-400">
                           Position {position.position}
                         </p>
                       </div>
@@ -837,7 +764,7 @@ export default function PointsAssignmentPage() {
                     {/* TEAM */}
 
                     <div>
-                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-300">
                         Team
                       </label>
 
@@ -854,9 +781,12 @@ export default function PointsAssignmentPage() {
                             )
                           }
                           disabled={!gameId}
-                          className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm font-bold text-slate-800 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100"
+                          className="w-full appearance-none rounded-xl border border-white/20 bg-white/10 px-4 py-3 pr-10 text-sm font-bold text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 disabled:bg-white/5 disabled:text-white/40"
                         >
-                          <option value="">
+                          <option
+                            value=""
+                            className="bg-slate-900 text-white"
+                          >
                             Not Applicable
                           </option>
 
@@ -865,6 +795,7 @@ export default function PointsAssignmentPage() {
                               <option
                                 key={team.id}
                                 value={team.id}
+                                className="bg-slate-900 text-white"
                               >
                                 {team.name}
                               </option>
@@ -872,14 +803,14 @@ export default function PointsAssignmentPage() {
                           )}
                         </select>
 
-                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
                       </div>
                     </div>
 
                     {/* POINTS */}
 
                     <div>
-                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-300">
                         Points
                       </label>
 
@@ -900,9 +831,12 @@ export default function PointsAssignmentPage() {
                             assignment.teamId ===
                               null
                           }
-                          className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm font-black text-slate-800 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                          className="w-full appearance-none rounded-xl border border-white/20 bg-white/10 px-4 py-3 pr-10 text-sm font-black text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 disabled:bg-white/5 disabled:text-white/40"
                         >
-                          <option value="">
+                          <option
+                            value=""
+                            className="bg-slate-900 text-white"
+                          >
                             Select Points
                           </option>
 
@@ -911,6 +845,7 @@ export default function PointsAssignmentPage() {
                               <option
                                 key={points}
                                 value={points}
+                                className="bg-slate-900 text-white"
                               >
                                 {points} points
                               </option>
@@ -918,7 +853,7 @@ export default function PointsAssignmentPage() {
                           )}
                         </select>
 
-                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
                       </div>
                     </div>
                   </div>
@@ -930,8 +865,9 @@ export default function PointsAssignmentPage() {
                 SAVE
             ================================================= */}
 
-            <div className="mt-5 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs font-medium text-slate-500">
+            <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+
+              <p className="text-xs font-medium text-slate-400">
                 Existing rounds are preserved.
                 Saving creates a new round.
               </p>
@@ -942,7 +878,7 @@ export default function PointsAssignmentPage() {
                 disabled={
                   saving || !gameId
                 }
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -965,16 +901,17 @@ export default function PointsAssignmentPage() {
         ================================================= */}
 
         {gameId && (
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-              <History className="h-5 w-5 text-slate-700" />
+          <section className="rounded-2xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
+
+            <div className="flex items-center gap-2 border-b border-white/10 px-5 py-4">
+              <History className="h-5 w-5 text-white" />
 
               <div>
-                <h2 className="font-black text-slate-900">
+                <h2 className="font-black text-white">
                   Assignment History
                 </h2>
 
-                <p className="text-xs font-medium text-slate-500">
+                <p className="text-xs font-medium text-slate-400">
                   Previous rounds for this game
                 </p>
               </div>
@@ -982,28 +919,30 @@ export default function PointsAssignmentPage() {
 
             {rounds.length === 0 ? (
               <div className="px-5 py-10 text-center">
-                <p className="text-sm font-semibold text-slate-500">
-                  No points have been assigned
-                  for this game yet.
+                <p className="text-sm font-semibold text-slate-400">
+                  No points have been assigned for this game yet.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-white/10">
+
                 {rounds.map(
                   (savedRound) => (
                     <div
                       key={savedRound.round}
                       className="p-5"
                     >
+
                       <div className="mb-4 flex items-center justify-between">
+
                         <div>
-                          <span className="text-sm font-black text-slate-900">
+                          <span className="text-sm font-black text-white">
                             Round{" "}
                             {savedRound.round}
                           </span>
                         </div>
 
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-300 ring-1 ring-white/10">
                           {
                             savedRound
                               .assignments
@@ -1014,6 +953,7 @@ export default function PointsAssignmentPage() {
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+
                         {POSITIONS.map(
                           (position) => {
                             const result =
@@ -1028,33 +968,37 @@ export default function PointsAssignmentPage() {
                                 key={
                                   position.position
                                 }
-                                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                                className="rounded-xl border border-white/10 bg-white/5 p-4"
                               >
+
                                 <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
                                   {
                                     position.label
                                   }
                                 </p>
 
-                                <p className="mt-2 text-sm font-black text-slate-900">
+                                <p className="mt-2 text-sm font-black text-white">
                                   {result
                                     ? result.teamName
                                     : "Not Applicable"}
                                 </p>
 
-                                <p className="mt-1 text-lg font-black text-slate-700">
+                                <p className="mt-1 text-lg font-black text-blue-300">
                                   {result
                                     ? `${result.points} pts`
                                     : "—"}
                                 </p>
+
                               </div>
                             );
                           }
                         )}
+
                       </div>
                     </div>
                   )
                 )}
+
               </div>
             )}
           </section>
@@ -1063,4 +1007,3 @@ export default function PointsAssignmentPage() {
     </main>
   );
 }
-

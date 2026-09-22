@@ -62,25 +62,57 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-
+    <main
+      className="
+        flex
+        min-h-screen
+        items-center
+        justify-center
+       bg-transparent
+        px-4
+        text-white
+      "
+    >
+      <div
+        className="
+          w-full
+          max-w-md
+          rounded-2xl
+          border
+          border-white/10
+          bg-white/10
+          p-8
+          shadow-2xl
+          backdrop-blur-md
+        "
+      >
         {/* Header */}
         <div className="mb-8 text-center">
-
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
+          <div
+            className="
+              mx-auto
+              flex
+              h-16
+              w-16
+              items-center
+              justify-center
+              rounded-2xl
+              bg-blue-600
+              text-white
+              shadow-lg
+              shadow-blue-900/30
+            "
+          >
             <Trophy size={32} />
           </div>
 
-          <h1 className="mt-5 text-3xl font-bold text-slate-900">
+          <h1 className="mt-5 text-3xl font-bold text-white">
             Organizer Login
           </h1>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-400">
             Enter the organizer code to continue.
           </p>
-
         </div>
 
         {/* Form */}
@@ -88,19 +120,16 @@ export default function AdminLoginPage() {
           onSubmit={handleLogin}
           className="space-y-5"
         >
-
           {/* Organizer Code */}
           <div>
-
             <label
               htmlFor="organizer-code"
-              className="mb-2 block text-sm font-semibold text-slate-700"
+              className="mb-2 block text-sm font-semibold text-slate-300"
             >
               Organizer Code
             </label>
 
             <div className="relative">
-
               <LockKeyhole
                 size={20}
                 className="
@@ -124,25 +153,25 @@ export default function AdminLoginPage() {
                   w-full
                   rounded-xl
                   border
-                  border-slate-300
-                  bg-white
+                  border-white/10
+                  bg-white/10
                   py-3
                   pl-12
                   pr-4
-                  text-slate-900
+                  text-white
                   outline-none
+                  shadow-lg
+                  backdrop-blur-md
                   transition
-                  placeholder:text-slate-400
-                  focus:border-blue-500
+                  placeholder:text-slate-500
+                  focus:border-blue-400
                   focus:ring-2
-                  focus:ring-blue-100
+                  focus:ring-blue-400/30
                   disabled:cursor-not-allowed
-                  disabled:bg-slate-100
+                  disabled:opacity-50
                 "
               />
-
             </div>
-
           </div>
 
           {/* Login Button */}
@@ -156,21 +185,19 @@ export default function AdminLoginPage() {
               py-3
               font-semibold
               text-white
-              shadow-md
+              shadow-lg
+              shadow-blue-900/30
               transition
-              hover:bg-blue-700
-              hover:shadow-lg
+              hover:bg-blue-500
+              hover:shadow-xl
               disabled:cursor-not-allowed
               disabled:opacity-50
             "
           >
             {loading ? "Checking..." : "Enter Dashboard"}
           </button>
-
         </form>
-
       </div>
-
     </main>
   );
 }
