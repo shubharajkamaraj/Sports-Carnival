@@ -136,7 +136,7 @@ export default function ViewerTeamsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-8">
+    <div className="min-h-screen bg-transparent px-4 py-6 text-white md:px-8">
       <div className="mx-auto max-w-7xl">
 
         {/* =========================================
@@ -147,11 +147,11 @@ export default function ViewerTeamsPage() {
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
 
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+              <h1 className="text-2xl font-bold text-white md:text-3xl">
                 Teams & Players
               </h1>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-300">
                 Meet the teams and players participating in the
                 Sports Carnival
               </p>
@@ -161,7 +161,7 @@ export default function ViewerTeamsPage() {
               type="button"
               onClick={loadTeams}
               disabled={loading}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-white/10 bg-white/10 px-4 py-2.5 text-sm font-semibold text-slate-200 shadow-lg backdrop-blur-md transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </button>
@@ -213,20 +213,20 @@ export default function ViewerTeamsPage() {
         ========================================== */}
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5">
+          <div className="mb-6 rounded-xl border border-red-400/20 bg-red-500/10 p-5 backdrop-blur-md">
 
-            <p className="font-semibold text-red-700">
+            <p className="font-semibold text-red-300">
               Failed to load teams
             </p>
 
-            <p className="mt-1 text-sm text-red-600">
+            <p className="mt-1 text-sm text-red-200/80">
               {error}
             </p>
 
             <button
               type="button"
               onClick={loadTeams}
-              className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              className="mt-4 rounded-lg border border-red-400/20 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/30"
             >
               Retry
             </button>
@@ -239,11 +239,11 @@ export default function ViewerTeamsPage() {
         ========================================== */}
 
         {loading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+          <div className="rounded-xl border border-white/10 bg-white/10 p-12 text-center shadow-lg backdrop-blur-md">
 
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-white" />
 
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-300">
               Loading teams and players...
             </p>
 
@@ -254,7 +254,7 @@ export default function ViewerTeamsPage() {
                 SEARCH + FILTER
             ====================================== */}
 
-            <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-6 rounded-xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur-md">
 
               <div className="flex flex-col gap-3 md:flex-row">
 
@@ -285,7 +285,7 @@ export default function ViewerTeamsPage() {
                       setSearch(e.target.value)
                     }
                     placeholder="Search team, captain or player..."
-                    className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400/40 focus:bg-white/10 focus:ring-2 focus:ring-blue-400/20"
                   />
 
                 </div>
@@ -297,9 +297,12 @@ export default function ViewerTeamsPage() {
                   onChange={(e) =>
                     setSelectedTeam(e.target.value)
                   }
-                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 outline-none transition focus:border-blue-400/40 focus:ring-2 focus:ring-blue-400/20"
                 >
-                  <option value="ALL">
+                  <option
+                    value="ALL"
+                    className="bg-[#0b1022] text-white"
+                  >
                     All Teams
                   </option>
 
@@ -307,6 +310,7 @@ export default function ViewerTeamsPage() {
                     <option
                       key={team.id}
                       value={String(team.id)}
+                      className="bg-[#0b1022] text-white"
                     >
                       {team.name}
                     </option>
@@ -322,17 +326,17 @@ export default function ViewerTeamsPage() {
             ====================================== */}
 
             {filteredTeams.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+              <div className="rounded-xl border border-white/10 bg-white/10 p-12 text-center shadow-lg backdrop-blur-md">
 
                 <div className="mb-3 text-4xl">
                   🔍
                 </div>
 
-                <p className="font-semibold text-slate-700">
+                <p className="font-semibold text-white">
                   No teams or players found
                 </p>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-400">
                   Try a different search.
                 </p>
 
@@ -384,13 +388,13 @@ function SummaryCard({
   suffix?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur-md transition hover:bg-white/15">
 
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </p>
 
-      <p className="mt-2 text-2xl font-bold text-slate-900">
+      <p className="mt-2 text-2xl font-bold text-white">
         {value}
         <span className="text-sm font-medium text-slate-400">
           {suffix}
@@ -415,7 +419,7 @@ function TeamCard({
   onToggle: () => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md transition hover:bg-white/[0.12]">
 
       {/* TEAM HEADER */}
 
@@ -432,19 +436,19 @@ function TeamCard({
 
               {/* TEAM ICON */}
 
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-2xl font-bold text-blue-700">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/20 text-2xl font-bold text-blue-300">
                 {getTeamInitials(team.name)}
               </div>
 
               <div className="min-w-0">
 
-                <h2 className="truncate text-lg font-bold text-slate-900 md:text-xl">
+                <h2 className="truncate text-lg font-bold text-white md:text-xl">
                   {team.name}
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-400">
                   Captain:{" "}
-                  <span className="font-semibold text-slate-700">
+                  <span className="font-semibold text-slate-200">
                     {team.captain || "Not assigned"}
                   </span>
                 </p>
@@ -457,17 +461,17 @@ function TeamCard({
 
             <div className="flex items-center gap-3">
 
-              <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+              <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200">
                 {team.players.length} Players
               </span>
 
               <span
-                className={`flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 transition ${
+                className={`flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition ${
                   expanded ? "rotate-180" : ""
                 }`}
               >
                 <svg
-                  className="h-5 w-5 text-slate-500"
+                  className="h-5 w-5 text-slate-400"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -487,22 +491,22 @@ function TeamCard({
       {/* PLAYER LIST */}
 
       {expanded && (
-        <div className="border-t border-slate-100 bg-slate-50/70 p-4">
+        <div className="border-t border-white/10 bg-white/5 p-4">
 
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
 
             <div>
-              <h3 className="font-semibold text-slate-800">
+              <h3 className="font-semibold text-white">
                 Players
               </h3>
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 {team.players.length} registered players
               </p>
             </div>
 
             {team.captain && (
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+              <span className="rounded-full border border-blue-400/20 bg-blue-500/20 px-3 py-1 text-xs font-bold text-blue-300">
                 Captain: {team.captain}
               </span>
             )}
@@ -522,12 +526,12 @@ function TeamCard({
               return (
                 <div
                   key={player.id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-blue-200 hover:shadow-sm"
+                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 transition hover:border-blue-400/20 hover:bg-white/10"
                 >
 
                   {/* JERSEY NUMBER */}
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-bold text-slate-700">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-sm font-bold text-slate-200">
                     {player.jerseyNo ?? "-"}
                   </div>
 
@@ -537,14 +541,14 @@ function TeamCard({
 
                     <div className="flex items-center gap-2">
 
-                      <p className="truncate text-sm font-semibold text-slate-900">
+                      <p className="truncate text-sm font-semibold text-white">
                         {player.name}
                       </p>
 
                       {isCaptain && (
                         <span
                           title="Captain"
-                          className="shrink-0 text-sm"
+                          className="shrink-0 text-sm text-blue-300"
                         >
                           ©
                         </span>
@@ -552,7 +556,7 @@ function TeamCard({
 
                     </div>
 
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       Jersey #{player.jerseyNo ?? "-"}
                     </p>
 

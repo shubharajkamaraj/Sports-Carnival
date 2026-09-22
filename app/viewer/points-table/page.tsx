@@ -35,12 +35,10 @@ type ApiResponse = {
   tournamentId?: number | null;
   matchesPlayed?: number;
 
-  // Cricket/Football/Handball may use standings/data
   standings?: Standing[];
   data?: Standing[];
   pointsTable?: Standing[];
 
-  // Throwball uses "teams"
   teams?: Standing[];
 
   error?: string;
@@ -143,20 +141,6 @@ export default function ViewerPointsTablePage() {
         );
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * Throwball API returns:
-       *
-       * {
-       *   success: true,
-       *   matchesPlayed: 1,
-       *   teams: [...]
-       * }
-       *
-       * Therefore we MUST read data.teams.
-       */
-
       const rows =
         data?.teams ??
         data?.standings ??
@@ -172,9 +156,7 @@ export default function ViewerPointsTablePage() {
 
       setStandings(rows);
 
-      if (
-        typeof data.matchesPlayed === "number"
-      ) {
+      if (typeof data.matchesPlayed === "number") {
         setMatchesPlayed(data.matchesPlayed);
       } else {
         setMatchesPlayed(null);
@@ -197,15 +179,12 @@ export default function ViewerPointsTablePage() {
   }
 
   const isFootball = sport === "Football";
-
   const isCricket = sport === "Cricket";
-
   const isHandball = sport === "Handball";
-
   const isThrowball = sport === "Throwball";
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-8">
+    <div className="min-h-screen bg-transparent px-4 py-6 text-white md:px-8">
       <div className="mx-auto max-w-7xl">
 
         {/* =========================
@@ -213,11 +192,11 @@ export default function ViewerPointsTablePage() {
         ========================== */}
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+          <h1 className="text-2xl font-bold text-white md:text-3xl">
             Points Table
           </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-300">
             View the latest tournament standings
           </p>
         </div>
@@ -237,8 +216,8 @@ export default function ViewerPointsTablePage() {
                 onClick={() => setSport(item)}
                 className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition ${
                   active
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
+                    ? "bg-white text-slate-900 shadow-lg"
+                    : "border border-white/10 bg-white/10 text-slate-200 backdrop-blur-md hover:bg-white/15"
                 }`}
               >
                 {item}
@@ -251,38 +230,36 @@ export default function ViewerPointsTablePage() {
             SPORT RULES
         ========================== */}
 
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-6 rounded-xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur-md">
           <div className="flex flex-wrap items-center justify-between gap-3">
 
             <div>
-              <h2 className="text-sm font-bold text-slate-900">
+              <h2 className="text-sm font-bold text-white">
                 {sport} Points System
               </h2>
 
               {isCricket && (
-                <p className="mt-1 text-sm text-slate-600">
-                  Win = 2 points · Tie/No Result = 1 point ·
-                  Loss = 0 points
+                <p className="mt-1 text-sm text-slate-300">
+                  Win = 2 points · Tie/No Result = 1 point · Loss = 0
+                  points
                 </p>
               )}
 
               {(isFootball || isHandball) && (
-                <p className="mt-1 text-sm text-slate-600">
-                  Win = 3 points · Draw = 1 point · Loss = 0
-                  points
+                <p className="mt-1 text-sm text-slate-300">
+                  Win = 3 points · Draw = 1 point · Loss = 0 points
                 </p>
               )}
 
               {isThrowball && (
-                <p className="mt-1 text-sm text-slate-600">
-                  Win = 3 points · Tie = 1 point · Loss = 0
-                  points
+                <p className="mt-1 text-sm text-slate-300">
+                  Win = 3 points · Tie = 1 point · Loss = 0 points
                 </p>
               )}
             </div>
 
             {matchesPlayed !== null && (
-              <div className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
+              <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200">
                 Matches Played: {matchesPlayed}
               </div>
             )}
@@ -294,15 +271,15 @@ export default function ViewerPointsTablePage() {
         ========================== */}
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-semibold text-red-700">
+          <div className="mb-6 rounded-xl border border-red-400/20 bg-red-500/10 p-4 backdrop-blur-md">
+            <p className="text-sm font-semibold text-red-300">
               {error}
             </p>
 
             <button
               type="button"
               onClick={loadPointsTable}
-              className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+              className="mt-3 rounded-lg border border-red-400/20 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/30"
             >
               Retry
             </button>
@@ -314,10 +291,10 @@ export default function ViewerPointsTablePage() {
         ========================== */}
 
         {loading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+          <div className="rounded-xl border border-white/10 bg-white/10 p-10 text-center shadow-lg backdrop-blur-md">
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-white/10 border-t-white" />
 
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-300">
               Loading {sport} points table...
             </p>
           </div>
@@ -326,12 +303,12 @@ export default function ViewerPointsTablePage() {
              EMPTY
           ========================== */
 
-          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-            <p className="font-semibold text-slate-700">
+          <div className="rounded-xl border border-white/10 bg-white/10 p-10 text-center shadow-lg backdrop-blur-md">
+            <p className="font-semibold text-white">
               No standings available
             </p>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-400">
               Completed {sport} matches will appear here.
             </p>
           </div>
@@ -340,7 +317,7 @@ export default function ViewerPointsTablePage() {
              TABLE
           ========================== */
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
 
             <div className="overflow-x-auto">
 
@@ -351,7 +328,7 @@ export default function ViewerPointsTablePage() {
                 ========================== */}
 
                 <thead>
-                  <tr className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-slate-600">
+                  <tr className="bg-white/5 text-left text-xs font-bold uppercase tracking-wide text-slate-300">
 
                     <th className="px-4 py-4 text-center">
                       Pos
@@ -461,13 +438,13 @@ export default function ViewerPointsTablePage() {
                     TABLE BODY
                 ========================== */}
 
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-white/10">
 
                   {standings.map((team, index) => (
 
                     <tr
                       key={team.teamId}
-                      className="transition hover:bg-slate-50"
+                      className="transition hover:bg-white/5"
                     >
 
                       {/* POSITION */}
@@ -477,12 +454,12 @@ export default function ViewerPointsTablePage() {
                         <div
                           className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
                             index === 0
-                              ? "bg-yellow-100 text-yellow-700"
+                              ? "bg-yellow-500/20 text-yellow-300"
                               : index === 1
-                              ? "bg-slate-200 text-slate-700"
+                              ? "bg-white/15 text-slate-200"
                               : index === 2
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-slate-100 text-slate-600"
+                              ? "bg-orange-500/20 text-orange-300"
+                              : "bg-white/10 text-slate-300"
                           }`}
                         >
                           {team.position ?? index + 1}
@@ -494,7 +471,7 @@ export default function ViewerPointsTablePage() {
 
                       <td className="px-4 py-4">
 
-                        <div className="font-semibold text-slate-900">
+                        <div className="font-semibold text-white">
                           {team.teamName}
                         </div>
 
@@ -502,20 +479,20 @@ export default function ViewerPointsTablePage() {
 
                       {/* PLAYED */}
 
-                      <td className="px-4 py-4 text-center text-sm text-slate-700">
+                      <td className="px-4 py-4 text-center text-sm text-slate-300">
                         {team.played ?? 0}
                       </td>
 
                       {/* WON */}
 
-                      <td className="px-4 py-4 text-center text-sm font-semibold text-green-600">
+                      <td className="px-4 py-4 text-center text-sm font-semibold text-green-300">
                         {team.won ?? 0}
                       </td>
 
                       {/* DRAW */}
 
                       {(isFootball || isHandball) && (
-                        <td className="px-4 py-4 text-center text-sm text-slate-700">
+                        <td className="px-4 py-4 text-center text-sm text-slate-300">
                           {team.drawn ?? 0}
                         </td>
                       )}
@@ -524,11 +501,11 @@ export default function ViewerPointsTablePage() {
 
                       {isCricket && (
                         <>
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.tied ?? 0}
                           </td>
 
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.noResult ?? 0}
                           </td>
                         </>
@@ -537,14 +514,14 @@ export default function ViewerPointsTablePage() {
                       {/* THROWBALL TIE */}
 
                       {isThrowball && (
-                        <td className="px-4 py-4 text-center text-sm text-slate-700">
+                        <td className="px-4 py-4 text-center text-sm text-slate-300">
                           {team.tied ?? 0}
                         </td>
                       )}
 
                       {/* LOST */}
 
-                      <td className="px-4 py-4 text-center text-sm font-semibold text-red-600">
+                      <td className="px-4 py-4 text-center text-sm font-semibold text-red-300">
                         {team.lost ?? 0}
                       </td>
 
@@ -552,21 +529,21 @@ export default function ViewerPointsTablePage() {
 
                       {(isFootball || isHandball) && (
                         <>
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.goalsFor ?? 0}
                           </td>
 
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.goalsAgainst ?? 0}
                           </td>
 
                           <td
                             className={`px-4 py-4 text-center text-sm font-semibold ${
                               (team.goalDifference ?? 0) > 0
-                                ? "text-green-600"
+                                ? "text-green-300"
                                 : (team.goalDifference ?? 0) < 0
-                                ? "text-red-600"
-                                : "text-slate-600"
+                                ? "text-red-300"
+                                : "text-slate-400"
                             }`}
                           >
                             {formatDifference(
@@ -580,21 +557,21 @@ export default function ViewerPointsTablePage() {
 
                       {isCricket && (
                         <>
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.runsFor ?? 0}
                           </td>
 
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.runsAgainst ?? 0}
                           </td>
 
                           <td
                             className={`px-4 py-4 text-center text-sm font-semibold ${
                               (team.runDifference ?? 0) > 0
-                                ? "text-green-600"
+                                ? "text-green-300"
                                 : (team.runDifference ?? 0) < 0
-                                ? "text-red-600"
-                                : "text-slate-600"
+                                ? "text-red-300"
+                                : "text-slate-400"
                             }`}
                           >
                             {formatDifference(
@@ -608,21 +585,21 @@ export default function ViewerPointsTablePage() {
 
                       {isThrowball && (
                         <>
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.setsWon ?? 0}
                           </td>
 
-                          <td className="px-4 py-4 text-center text-sm text-slate-700">
+                          <td className="px-4 py-4 text-center text-sm text-slate-300">
                             {team.setsLost ?? 0}
                           </td>
 
                           <td
                             className={`px-4 py-4 text-center text-sm font-semibold ${
                               (team.setDifference ?? 0) > 0
-                                ? "text-green-600"
+                                ? "text-green-300"
                                 : (team.setDifference ?? 0) < 0
-                                ? "text-red-600"
-                                : "text-slate-600"
+                                ? "text-red-300"
+                                : "text-slate-400"
                             }`}
                           >
                             {formatDifference(
@@ -636,7 +613,7 @@ export default function ViewerPointsTablePage() {
 
                       <td className="px-4 py-4 text-center">
 
-                        <span className="inline-flex min-w-[42px] items-center justify-center rounded-lg bg-blue-100 px-3 py-1.5 text-sm font-bold text-blue-700">
+                        <span className="inline-flex min-w-[42px] items-center justify-center rounded-lg border border-blue-400/20 bg-blue-500/20 px-3 py-1.5 text-sm font-bold text-blue-300">
                           {team.points ?? 0}
                         </span>
 
@@ -659,44 +636,44 @@ export default function ViewerPointsTablePage() {
 
         {!loading && standings.length > 0 && (
 
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/10 p-4 shadow-lg backdrop-blur-md">
 
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-400">
 
               <span>
-                <b>P</b> = Played
+                <b className="text-slate-200">P</b> = Played
               </span>
 
               <span>
-                <b>W</b> = Won
+                <b className="text-slate-200">W</b> = Won
               </span>
 
               {(isFootball || isHandball) && (
                 <span>
-                  <b>D</b> = Draw
+                  <b className="text-slate-200">D</b> = Draw
                 </span>
               )}
 
               {isCricket && (
                 <>
                   <span>
-                    <b>T</b> = Tie
+                    <b className="text-slate-200">T</b> = Tie
                   </span>
 
                   <span>
-                    <b>NR</b> = No Result
+                    <b className="text-slate-200">NR</b> = No Result
                   </span>
 
                   <span>
-                    <b>RF</b> = Runs For
+                    <b className="text-slate-200">RF</b> = Runs For
                   </span>
 
                   <span>
-                    <b>RA</b> = Runs Against
+                    <b className="text-slate-200">RA</b> = Runs Against
                   </span>
 
                   <span>
-                    <b>RD</b> = Run Difference
+                    <b className="text-slate-200">RD</b> = Run Difference
                   </span>
                 </>
               )}
@@ -704,19 +681,19 @@ export default function ViewerPointsTablePage() {
               {isThrowball && (
                 <>
                   <span>
-                    <b>T</b> = Tie
+                    <b className="text-slate-200">T</b> = Tie
                   </span>
 
                   <span>
-                    <b>SW</b> = Sets Won
+                    <b className="text-slate-200">SW</b> = Sets Won
                   </span>
 
                   <span>
-                    <b>SL</b> = Sets Lost
+                    <b className="text-slate-200">SL</b> = Sets Lost
                   </span>
 
                   <span>
-                    <b>SD</b> = Set Difference
+                    <b className="text-slate-200">SD</b> = Set Difference
                   </span>
                 </>
               )}
@@ -724,25 +701,25 @@ export default function ViewerPointsTablePage() {
               {(isFootball || isHandball) && (
                 <>
                   <span>
-                    <b>GF</b> = Goals For
+                    <b className="text-slate-200">GF</b> = Goals For
                   </span>
 
                   <span>
-                    <b>GA</b> = Goals Against
+                    <b className="text-slate-200">GA</b> = Goals Against
                   </span>
 
                   <span>
-                    <b>GD</b> = Goal Difference
+                    <b className="text-slate-200">GD</b> = Goal Difference
                   </span>
                 </>
               )}
 
               <span>
-                <b>L</b> = Lost
+                <b className="text-slate-200">L</b> = Lost
               </span>
 
               <span>
-                <b>Pts</b> = Points
+                <b className="text-slate-200">Pts</b> = Points
               </span>
 
             </div>

@@ -93,31 +93,33 @@ export default function ViewerStandingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 md:px-8">
+    <div className="min-h-screen bg-transparent px-4 py-6 text-white md:px-8">
       <div className="mx-auto max-w-7xl">
 
         {/* HEADER */}
+
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+          <h1 className="text-2xl font-bold text-white md:text-3xl">
             Tournament Standings
           </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-300">
             Overall team standings across all tournament games
           </p>
         </div>
 
         {/* ERROR */}
+
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-semibold text-red-700">
+          <div className="mb-6 rounded-xl border border-red-400/20 bg-red-500/10 p-4 backdrop-blur-md">
+            <p className="text-sm font-semibold text-red-300">
               {error}
             </p>
 
             <button
               type="button"
               onClick={loadStandings}
-              className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              className="mt-3 rounded-lg border border-red-400/20 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/30"
             >
               Retry
             </button>
@@ -125,56 +127,59 @@ export default function ViewerStandingsPage() {
         )}
 
         {/* LOADING */}
-        {loading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
 
-            <p className="text-sm text-slate-500">
+        {loading ? (
+          <div className="rounded-xl border border-white/10 bg-white/10 p-10 text-center shadow-lg backdrop-blur-md">
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-white/10 border-t-white" />
+
+            <p className="text-sm text-slate-300">
               Loading tournament standings...
             </p>
           </div>
         ) : standings.length === 0 ? (
           /* EMPTY */
-          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-            <p className="font-semibold text-slate-700">
+
+          <div className="rounded-xl border border-white/10 bg-white/10 p-10 text-center shadow-lg backdrop-blur-md">
+            <p className="font-semibold text-white">
               No standings available
             </p>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-400">
               Tournament results will appear here.
             </p>
           </div>
         ) : (
           <>
             {/* SUMMARY */}
+
             <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="rounded-xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md transition hover:bg-white/15">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Teams
                 </p>
 
-                <p className="mt-2 text-3xl font-bold text-slate-900">
+                <p className="mt-2 text-3xl font-bold text-white">
                   {standings.length}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="rounded-xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md transition hover:bg-white/15">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Games
                 </p>
 
-                <p className="mt-2 text-3xl font-bold text-slate-900">
+                <p className="mt-2 text-3xl font-bold text-white">
                   {games.length}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="rounded-xl border border-white/10 bg-white/10 p-5 shadow-lg backdrop-blur-md transition hover:bg-white/15">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Leader
                 </p>
 
-                <p className="mt-2 truncate text-xl font-bold text-blue-600">
+                <p className="mt-2 truncate text-xl font-bold text-blue-300">
                   {standings[0]?.teamName ?? "-"}
                 </p>
               </div>
@@ -182,14 +187,15 @@ export default function ViewerStandingsPage() {
             </div>
 
             {/* TABLE */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+
+            <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
 
               <div className="overflow-x-auto">
 
                 <table className="w-full min-w-[800px] border-collapse">
 
                   <thead>
-                    <tr className="bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600">
+                    <tr className="bg-white/5 text-xs font-bold uppercase tracking-wide text-slate-300">
 
                       <th className="px-4 py-4 text-center">
                         Rank
@@ -219,13 +225,13 @@ export default function ViewerStandingsPage() {
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-white/10">
 
                     {standings.map((team, index) => (
 
                       <tr
                         key={team.teamId}
-                        className="transition hover:bg-slate-50"
+                        className="transition hover:bg-white/5"
                       >
 
                         {/* RANK */}
@@ -235,12 +241,12 @@ export default function ViewerStandingsPage() {
                           <div
                             className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
                               index === 0
-                                ? "bg-yellow-100 text-yellow-700"
+                                ? "bg-yellow-500/20 text-yellow-300"
                                 : index === 1
-                                ? "bg-slate-200 text-slate-700"
+                                ? "bg-white/15 text-slate-200"
                                 : index === 2
-                                ? "bg-orange-100 text-orange-700"
-                                : "bg-slate-100 text-slate-600"
+                                ? "bg-orange-500/20 text-orange-300"
+                                : "bg-white/10 text-slate-300"
                             }`}
                           >
                             {team.rank}
@@ -252,7 +258,7 @@ export default function ViewerStandingsPage() {
 
                         <td className="px-4 py-4">
 
-                          <div className="font-semibold text-slate-900">
+                          <div className="font-semibold text-white">
                             {team.teamName}
                           </div>
 
@@ -260,7 +266,7 @@ export default function ViewerStandingsPage() {
 
                         {/* PLAYED */}
 
-                        <td className="px-4 py-4 text-center text-sm text-slate-700">
+                        <td className="px-4 py-4 text-center text-sm text-slate-300">
                           {team.gamesPlayed}
                         </td>
 
@@ -276,7 +282,7 @@ export default function ViewerStandingsPage() {
                               key={game.id}
                               className="px-4 py-4 text-center"
                             >
-                              <span className="inline-flex min-w-[36px] items-center justify-center rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-700">
+                              <span className="inline-flex min-w-[36px] items-center justify-center rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-sm font-semibold text-slate-200">
                                 {points}
                               </span>
                             </td>
@@ -287,7 +293,7 @@ export default function ViewerStandingsPage() {
 
                         <td className="px-4 py-4 text-center">
 
-                          <span className="inline-flex min-w-[50px] items-center justify-center rounded-lg bg-blue-100 px-3 py-1.5 text-sm font-bold text-blue-700">
+                          <span className="inline-flex min-w-[50px] items-center justify-center rounded-lg border border-blue-400/20 bg-blue-500/20 px-3 py-1.5 text-sm font-bold text-blue-300">
                             {team.totalPoints}
                           </span>
 
@@ -306,16 +312,16 @@ export default function ViewerStandingsPage() {
 
             {/* LAST UPDATED / REFRESH */}
 
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-4 flex items-center justify-between gap-4">
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 Standings are calculated from tournament game results.
               </p>
 
               <button
                 type="button"
                 onClick={loadStandings}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 shadow-lg backdrop-blur-md transition hover:bg-white/15"
               >
                 Refresh
               </button>

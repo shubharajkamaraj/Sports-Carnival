@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -165,10 +164,10 @@ export default function ViewerMatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-transparent text-white">
 
       {/* Header */}
-      <div className="border-b bg-white">
+      <div className="border-b border-white/10 bg-white/5 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-6 py-6">
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -176,23 +175,33 @@ export default function ViewerMatchesPage() {
             <div>
               <Link
                 href="/viewer"
-                className="text-sm font-medium text-slate-500 hover:text-slate-900"
+                className="text-sm font-medium text-slate-300 transition hover:text-white"
               >
                 ← Viewer Home
               </Link>
 
-              <h1 className="mt-2 text-3xl font-bold text-slate-900">
+              <h1 className="mt-2 text-3xl font-bold text-white">
                 Matches
               </h1>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-300">
                 Follow live matches, upcoming games and completed results.
               </p>
             </div>
 
             <button
               onClick={loadMatches}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="
+                rounded-lg
+                border border-white/10
+                bg-white/10
+                px-4 py-2
+                text-sm font-medium
+                text-white
+                backdrop-blur-md
+                transition
+                hover:bg-white/15
+              "
             >
               Refresh
             </button>
@@ -202,41 +211,71 @@ export default function ViewerMatchesPage() {
           {/* Summary */}
           <div className="mt-6 grid grid-cols-3 gap-3">
 
+            {/* Live */}
             <button
               onClick={() => setFilter("LIVE")}
-              className="rounded-xl border bg-white p-4 text-left hover:bg-slate-50"
+              className="
+                rounded-xl
+                border border-white/10
+                bg-white/10
+                p-4
+                text-left
+                backdrop-blur-md
+                transition
+                hover:bg-white/15
+              "
             >
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Live
               </p>
 
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-2xl font-bold text-white">
                 {liveCount}
               </p>
             </button>
 
+            {/* Upcoming */}
             <button
               onClick={() => setFilter("UPCOMING")}
-              className="rounded-xl border bg-white p-4 text-left hover:bg-slate-50"
+              className="
+                rounded-xl
+                border border-white/10
+                bg-white/10
+                p-4
+                text-left
+                backdrop-blur-md
+                transition
+                hover:bg-white/15
+              "
             >
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Upcoming
               </p>
 
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-2xl font-bold text-white">
                 {upcomingCount}
               </p>
             </button>
 
+            {/* Completed */}
             <button
               onClick={() => setFilter("COMPLETED")}
-              className="rounded-xl border bg-white p-4 text-left hover:bg-slate-50"
+              className="
+                rounded-xl
+                border border-white/10
+                bg-white/10
+                p-4
+                text-left
+                backdrop-blur-md
+                transition
+                hover:bg-white/15
+              "
             >
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Completed
               </p>
 
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-2xl font-bold text-white">
                 {completedCount}
               </p>
             </button>
@@ -265,8 +304,8 @@ export default function ViewerMatchesPage() {
               onClick={() => setFilter(value)}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                 filter === value
-                  ? "bg-slate-900 text-white"
-                  : "border bg-white text-slate-600 hover:bg-slate-100"
+                  ? "bg-white text-slate-900 shadow-lg"
+                  : "border border-white/10 bg-white/10 text-slate-200 backdrop-blur-md hover:bg-white/15"
               }`}
             >
               {label}
@@ -277,8 +316,8 @@ export default function ViewerMatchesPage() {
 
         {/* Loading */}
         {loading && (
-          <div className="rounded-xl border bg-white p-10 text-center">
-            <p className="text-sm text-slate-500">
+          <div className="rounded-xl border border-white/10 bg-white/10 p-10 text-center backdrop-blur-md">
+            <p className="text-sm text-slate-300">
               Loading matches...
             </p>
           </div>
@@ -286,14 +325,14 @@ export default function ViewerMatchesPage() {
 
         {/* Error */}
         {!loading && error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-sm text-red-600">
+          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-6 text-center backdrop-blur-md">
+            <p className="text-sm text-red-300">
               {error}
             </p>
 
             <button
               onClick={loadMatches}
-              className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+              className="mt-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
             >
               Try Again
             </button>
@@ -304,16 +343,20 @@ export default function ViewerMatchesPage() {
         {!loading &&
           !error &&
           filteredMatches.length === 0 && (
-            <div className="rounded-xl border bg-white p-10 text-center">
-              <div className="text-4xl">🏆</div>
+            <div className="rounded-xl border border-white/10 bg-white/10 p-10 text-center backdrop-blur-md">
 
-              <h2 className="mt-3 text-lg font-semibold text-slate-900">
+              <div className="text-4xl">
+                🏆
+              </div>
+
+              <h2 className="mt-3 text-lg font-semibold text-white">
                 No matches found
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-300">
                 There are no matches in this category yet.
               </p>
+
             </div>
           )}
 
@@ -321,19 +364,35 @@ export default function ViewerMatchesPage() {
         {!loading &&
           !error &&
           filteredMatches.length > 0 && (
-            <div className="overflow-hidden rounded-xl border bg-white">
+            <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10 backdrop-blur-md">
 
               {/* Table Header */}
-              <div className="hidden border-b bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[90px_110px_1fr_120px_100px] md:gap-4">
-                <div>Match</div>
-                <div>Sport</div>
-                <div>Teams</div>
-                <div>Status</div>
-                <div>Result</div>
+              <div className="hidden border-b border-white/10 bg-white/5 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[90px_110px_1fr_120px_100px] md:gap-4">
+
+                <div>
+                  Match
+                </div>
+
+                <div>
+                  Sport
+                </div>
+
+                <div>
+                  Teams
+                </div>
+
+                <div>
+                  Status
+                </div>
+
+                <div>
+                  Result
+                </div>
+
               </div>
 
               {/* Rows */}
-              <div className="divide-y">
+              <div className="divide-y divide-white/10">
 
                 {filteredMatches.map((match) => {
                   const team1Score = match.team1Score ?? 0;
@@ -343,7 +402,11 @@ export default function ViewerMatchesPage() {
                     <Link
                       key={match.id}
                       href={`/viewer/matches/${match.id}`}
-                      className="block px-5 py-4 transition hover:bg-slate-50"
+                      className="
+                        block px-5 py-4
+                        transition
+                        hover:bg-white/5
+                      "
                     >
 
                       <div className="grid gap-3 md:grid-cols-[90px_110px_1fr_120px_100px] md:items-center md:gap-4">
@@ -354,7 +417,7 @@ export default function ViewerMatchesPage() {
                             Match
                           </p>
 
-                          <p className="font-semibold text-slate-900">
+                          <p className="font-semibold text-white">
                             {match.matchNumber
                               ? `Match ${match.matchNumber}`
                               : `Match #${match.id}`}
@@ -373,7 +436,7 @@ export default function ViewerMatchesPage() {
                             Sport
                           </p>
 
-                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                          <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-200">
                             {getSportName(match)}
                           </span>
 
@@ -388,11 +451,12 @@ export default function ViewerMatchesPage() {
                           <div className="flex items-center justify-between gap-4">
 
                             <div className="min-w-0">
+
                               <p
                                 className={`truncate font-semibold ${
                                   match.winnerTeamId === match.team1.id
-                                    ? "text-slate-900"
-                                    : "text-slate-700"
+                                    ? "text-white"
+                                    : "text-slate-300"
                                 }`}
                               >
                                 {match.team1.name}
@@ -401,21 +465,22 @@ export default function ViewerMatchesPage() {
                               <p
                                 className={`truncate font-semibold ${
                                   match.winnerTeamId === match.team2.id
-                                    ? "text-slate-900"
-                                    : "text-slate-700"
+                                    ? "text-white"
+                                    : "text-slate-300"
                                 }`}
                               >
                                 {match.team2.name}
                               </p>
+
                             </div>
 
                             <div className="shrink-0 text-right">
 
-                              <p className="font-bold text-slate-900">
+                              <p className="font-bold text-white">
                                 {team1Score}
                               </p>
 
-                              <p className="font-bold text-slate-900">
+                              <p className="font-bold text-white">
                                 {team2Score}
                               </p>
 
@@ -434,12 +499,12 @@ export default function ViewerMatchesPage() {
                           <span
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                               match.status === "LIVE"
-                                ? "bg-red-100 text-red-600"
+                                ? "bg-red-500/20 text-red-300"
                                 : match.status === "UPCOMING"
-                                  ? "bg-blue-100 text-blue-600"
+                                  ? "bg-blue-500/20 text-blue-300"
                                   : match.status === "COMPLETED"
-                                    ? "bg-green-100 text-green-600"
-                                    : "bg-slate-100 text-slate-500"
+                                    ? "bg-green-500/20 text-green-300"
+                                    : "bg-white/10 text-slate-300"
                             }`}
                           >
                             {match.status === "LIVE" && (
@@ -458,7 +523,7 @@ export default function ViewerMatchesPage() {
                             Result
                           </p>
 
-                          <p className="text-sm font-medium text-slate-700">
+                          <p className="text-sm font-medium text-slate-200">
                             {getResultText(match) ?? "—"}
                           </p>
                         </div>

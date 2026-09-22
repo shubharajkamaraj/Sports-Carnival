@@ -180,36 +180,20 @@ export default function ViewerMatchPage() {
       let summaryApi = "";
 
       switch (sportType) {
-        // -----------------------------------------------
-        // CRICKET
-        // -----------------------------------------------
-
         case "CRICKET":
           summaryApi =
             `/api/matches/${matchId}/summary`;
           break;
-
-        // -----------------------------------------------
-        // FOOTBALL
-        // -----------------------------------------------
 
         case "FOOTBALL":
           summaryApi =
             `/api/matches/${matchId}/football/summary`;
           break;
 
-        // -----------------------------------------------
-        // HANDBALL
-        // -----------------------------------------------
-
         case "HANDBALL":
           summaryApi =
             `/api/matches/${matchId}/handball/summary`;
           break;
-
-        // -----------------------------------------------
-        // THROWBALL
-        // -----------------------------------------------
 
         case "THROWBALL":
           summaryApi =
@@ -239,10 +223,6 @@ export default function ViewerMatchPage() {
             cache: "no-store",
           }
         );
-
-      // Read response as text first.
-      // This prevents JSON parsing errors
-      // when Next.js returns an HTML error page.
 
       const responseText =
         await summaryResponse.text();
@@ -308,10 +288,6 @@ export default function ViewerMatchPage() {
       let team1Score = 0;
       let team2Score = 0;
 
-      // -------------------------------------------------
-      // THROWBALL SCORE
-      // -------------------------------------------------
-
       if (
         sportType ===
         "THROWBALL"
@@ -331,13 +307,7 @@ export default function ViewerMatchPage() {
           summaryData?.score
             ?.team2Score ??
           0;
-      }
-
-      // -------------------------------------------------
-      // OTHER SPORTS
-      // -------------------------------------------------
-
-      else {
+      } else {
         team1Score =
           summaryMatch?.team1Score ??
           summaryMatch?.team1?.score ??
@@ -377,7 +347,6 @@ export default function ViewerMatchPage() {
         summaryMatch?.winner ??
         null;
 
-      // Throwball winner
       if (
         !winner &&
         sportType ===
@@ -392,7 +361,6 @@ export default function ViewerMatchPage() {
           null;
       }
 
-      // Create winner object from ID
       if (
         !winner &&
         winnerTeamId
@@ -640,14 +608,12 @@ export default function ViewerMatchPage() {
       return "";
     }
 
-    // Winner object
     if (
       match.winner?.name
     ) {
       return `${match.winner.name} won`;
     }
 
-    // Stored result
     if (
       match.result ===
       "TEAM1_WIN"
@@ -683,7 +649,6 @@ export default function ViewerMatchPage() {
       return "No Result";
     }
 
-    // Winner ID
     if (
       match.winnerTeamId ===
       match.team1.id
@@ -698,7 +663,6 @@ export default function ViewerMatchPage() {
       return `${match.team2.name} won`;
     }
 
-    // Score fallback
     const team1Score =
       match.team1Score ?? 0;
 
@@ -735,19 +699,19 @@ export default function ViewerMatchPage() {
       match.status
     ) {
       case "LIVE":
-        return "bg-red-100 text-red-600";
+        return "bg-red-500/20 text-red-300";
 
       case "UPCOMING":
-        return "bg-blue-100 text-blue-600";
+        return "bg-blue-500/20 text-blue-300";
 
       case "COMPLETED":
-        return "bg-green-100 text-green-600";
+        return "bg-green-500/20 text-green-300";
 
       case "CANCELLED":
-        return "bg-slate-100 text-slate-500";
+        return "bg-white/10 text-slate-300";
 
       default:
-        return "bg-slate-100 text-slate-600";
+        return "bg-white/10 text-slate-300";
     }
   }
 
@@ -757,13 +721,13 @@ export default function ViewerMatchPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
+      <div className="min-h-screen bg-transparent p-6 text-white">
 
         <div className="mx-auto max-w-5xl">
 
-          <div className="rounded-2xl border bg-white p-10 text-center shadow-sm">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center shadow-lg backdrop-blur-md">
 
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-300">
               Loading match...
             </p>
 
@@ -784,35 +748,35 @@ export default function ViewerMatchPage() {
     !match
   ) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
+      <div className="min-h-screen bg-transparent p-6 text-white">
 
         <div className="mx-auto max-w-5xl">
 
           <Link
             href="/viewer/matches"
-            className="text-sm font-medium text-slate-500 hover:text-slate-900"
+            className="text-sm font-medium text-slate-300 hover:text-white"
           >
             ← Back to Matches
           </Link>
 
-          <div className="mt-5 rounded-2xl border bg-white p-10 text-center shadow-sm">
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/10 p-10 text-center shadow-lg backdrop-blur-md">
 
             <div className="text-4xl">
               ⚠️
             </div>
 
-            <h1 className="mt-3 text-xl font-semibold text-slate-900">
+            <h1 className="mt-3 text-xl font-semibold text-white">
               Match not found
             </h1>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-slate-300">
               {error ||
                 "The requested match could not be found."}
             </p>
 
             <button
               onClick={loadMatch}
-              className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              className="mt-5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200"
             >
               Try Again
             </button>
@@ -836,19 +800,19 @@ export default function ViewerMatchPage() {
   // =====================================================
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-transparent text-white">
 
       {/* =================================================
           HEADER
       ================================================= */}
 
-      <div className="border-b bg-white">
+      <div className="border-b border-white/10 bg-white/5 backdrop-blur-md">
 
         <div className="mx-auto max-w-5xl px-6 py-5">
 
           <Link
             href="/viewer/matches"
-            className="text-sm font-medium text-slate-500 hover:text-slate-900"
+            className="text-sm font-medium text-slate-300 transition hover:text-white"
           >
             ← Back to Matches
           </Link>
@@ -863,9 +827,9 @@ export default function ViewerMatchPage() {
             MATCH HEADER
         ================================================= */}
 
-        <div className="rounded-2xl border bg-white shadow-sm">
+        <div className="rounded-2xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
 
-          <div className="border-b px-6 py-5">
+          <div className="border-b border-white/10 px-6 py-5">
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
@@ -873,24 +837,24 @@ export default function ViewerMatchPage() {
 
                 <div className="flex flex-wrap items-center gap-2">
 
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">
                     {getSportName()}
                   </span>
 
                   {match.stage && (
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-300">
                       {match.stage}
                     </span>
                   )}
 
                 </div>
 
-                <h1 className="mt-3 text-2xl font-bold text-slate-900">
+                <h1 className="mt-3 text-2xl font-bold text-white">
                   {match.game?.name ||
                     "Match"}
                 </h1>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-300">
                   {match.matchNumber
                     ? `Match ${match.matchNumber}`
                     : `Match #${match.id}`}
@@ -937,14 +901,14 @@ export default function ViewerMatchPage() {
                   className={`text-xl font-bold ${
                     match.winnerTeamId ===
                     match.team1.id
-                      ? "text-slate-900"
-                      : "text-slate-700"
+                      ? "text-white"
+                      : "text-slate-300"
                   }`}
                 >
                   {match.team1.name}
                 </p>
 
-                <p className="mt-2 text-4xl font-black text-slate-900">
+                <p className="mt-2 text-4xl font-black text-white">
                   {team1Score}
                 </p>
 
@@ -954,7 +918,7 @@ export default function ViewerMatchPage() {
 
               <div className="text-center">
 
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-500">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-slate-300">
                   VS
                 </div>
 
@@ -974,14 +938,14 @@ export default function ViewerMatchPage() {
                   className={`text-xl font-bold ${
                     match.winnerTeamId ===
                     match.team2.id
-                      ? "text-slate-900"
-                      : "text-slate-700"
+                      ? "text-white"
+                      : "text-slate-300"
                   }`}
                 >
                   {match.team2.name}
                 </p>
 
-                <p className="mt-2 text-4xl font-black text-slate-900">
+                <p className="mt-2 text-4xl font-black text-white">
                   {team2Score}
                 </p>
 
@@ -995,13 +959,13 @@ export default function ViewerMatchPage() {
 
             {match.status ===
               "COMPLETED" && (
-              <div className="mt-8 rounded-xl bg-slate-50 px-5 py-4 text-center">
+              <div className="mt-8 rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-center">
 
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Result
                 </p>
 
-                <p className="mt-1 text-lg font-bold text-slate-900">
+                <p className="mt-1 text-lg font-bold text-white">
                   {getResultText()}
                 </p>
 
@@ -1014,13 +978,13 @@ export default function ViewerMatchPage() {
 
             {match.status ===
               "LIVE" && (
-              <div className="mt-8 rounded-xl bg-red-50 px-5 py-4 text-center">
+              <div className="mt-8 rounded-xl border border-red-400/20 bg-red-500/10 px-5 py-4 text-center">
 
-                <p className="text-sm font-semibold text-red-600">
+                <p className="text-sm font-semibold text-red-300">
                   🔴 Match is currently live
                 </p>
 
-                <p className="mt-1 text-xs text-red-500">
+                <p className="mt-1 text-xs text-red-300/80">
                   Follow the live match for the latest score.
                 </p>
 
@@ -1039,11 +1003,11 @@ export default function ViewerMatchPage() {
 
           {/* TEAM 1 */}
 
-          <div className="rounded-2xl border bg-white shadow-sm">
+          <div className="rounded-2xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
 
-            <div className="border-b px-5 py-4">
+            <div className="border-b border-white/10 px-5 py-4">
 
-              <h2 className="font-semibold text-slate-900">
+              <h2 className="font-semibold text-white">
                 {match.team1.name}
               </h2>
 
@@ -1053,7 +1017,7 @@ export default function ViewerMatchPage() {
 
             </div>
 
-            <div className="divide-y">
+            <div className="divide-y divide-white/10">
 
               {(match.team1.players ??
                 []).length === 0 ? (
@@ -1071,14 +1035,14 @@ export default function ViewerMatchPage() {
                       className="flex items-center px-5 py-3"
                     >
 
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-slate-300">
                         {player.jerseyNo ??
                           "-"}
                       </div>
 
                       <div className="ml-3">
 
-                        <p className="text-sm font-medium text-slate-800">
+                        <p className="text-sm font-medium text-white">
                           {player.name}
                         </p>
 
@@ -1102,11 +1066,11 @@ export default function ViewerMatchPage() {
 
           {/* TEAM 2 */}
 
-          <div className="rounded-2xl border bg-white shadow-sm">
+          <div className="rounded-2xl border border-white/10 bg-white/10 shadow-lg backdrop-blur-md">
 
-            <div className="border-b px-5 py-4">
+            <div className="border-b border-white/10 px-5 py-4">
 
-              <h2 className="font-semibold text-slate-900">
+              <h2 className="font-semibold text-white">
                 {match.team2.name}
               </h2>
 
@@ -1116,7 +1080,7 @@ export default function ViewerMatchPage() {
 
             </div>
 
-            <div className="divide-y">
+            <div className="divide-y divide-white/10">
 
               {(match.team2.players ??
                 []).length === 0 ? (
@@ -1134,14 +1098,14 @@ export default function ViewerMatchPage() {
                       className="flex items-center px-5 py-3"
                     >
 
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-slate-300">
                         {player.jerseyNo ??
                           "-"}
                       </div>
 
                       <div className="ml-3">
 
-                        <p className="text-sm font-medium text-slate-800">
+                        <p className="text-sm font-medium text-white">
                           {player.name}
                         </p>
 
@@ -1173,7 +1137,7 @@ export default function ViewerMatchPage() {
 
           <Link
             href="/viewer"
-            className="text-sm font-medium text-slate-500 hover:text-slate-900"
+            className="text-sm font-medium text-slate-300 transition hover:text-white"
           >
             Back to Viewer Home
           </Link>
