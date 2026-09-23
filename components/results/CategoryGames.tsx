@@ -70,7 +70,7 @@ export default function CategoryGames({
             <button
               key={game.id}
               onClick={() => onSelectGame && onSelectGame(game)}
-              className="group rounded-2xl border bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              className="group rounded-2xl border bg-white p-6 text-black text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
               <div className="flex items-center justify-between">
                 <div>

@@ -363,7 +363,7 @@ export default function AddMatchForm({
               Add Match
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-black">
               Create a new tournament match
             </p>
           </div>
@@ -371,7 +371,7 @@ export default function AddMatchForm({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-black"
           >
             <X size={20} />
           </button>
@@ -392,7 +392,7 @@ export default function AddMatchForm({
           ================================================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Tournament
             </label>
 
@@ -403,7 +403,7 @@ export default function AddMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 text-black px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
               <option value="">
                 Select Tournament
@@ -427,7 +427,7 @@ export default function AddMatchForm({
           ================================================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Game
             </label>
 
@@ -441,7 +441,7 @@ export default function AddMatchForm({
                 // Reset cricket overs
                 setOvers("2");
               }}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 text-black px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
               <option value="">
                 Select Game
@@ -463,7 +463,7 @@ export default function AddMatchForm({
           ================================================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Match Stage
             </label>
 
@@ -472,7 +472,7 @@ export default function AddMatchForm({
               onChange={(e) =>
                 setStage(e.target.value)
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-black outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
               <option value="LEAGUE">
                 League
@@ -490,7 +490,7 @@ export default function AddMatchForm({
           ================================================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Team 1
             </label>
 
@@ -501,7 +501,7 @@ export default function AddMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-black outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
               <option value="">
                 Select Team 1
@@ -527,7 +527,7 @@ export default function AddMatchForm({
           ================================================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Team 2
             </label>
 
@@ -538,7 +538,7 @@ export default function AddMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-black outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
               <option value="">
                 Select Team 2
@@ -564,7 +564,7 @@ export default function AddMatchForm({
           ================================================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Match Number
             </label>
 
@@ -578,7 +578,7 @@ export default function AddMatchForm({
                 )
               }
               placeholder="Example: 1"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 text-black px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
@@ -588,7 +588,7 @@ export default function AddMatchForm({
 
           {isCricket && (
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-black">
                 Overs
               </label>
 
@@ -599,7 +599,7 @@ export default function AddMatchForm({
                     e.target.value
                   )
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-slate-200 text-black px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
                 <option value="2">
                   2 Overs
@@ -625,7 +625,7 @@ export default function AddMatchForm({
           ================================================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Status
             </label>
 
@@ -636,7 +636,7 @@ export default function AddMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-black outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
               <option value="UPCOMING">
                 Upcoming
@@ -662,7 +662,7 @@ export default function AddMatchForm({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl border border-slate-200 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-xl border border-slate-200 px-5 py-2.5 font-medium text-black hover:bg-slate-50 disabled:opacity-50"
             >
               Cancel
             </button>

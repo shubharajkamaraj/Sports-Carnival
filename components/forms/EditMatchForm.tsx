@@ -699,11 +699,11 @@ export default function EditMatchForm({
         <div className="flex items-center justify-between border-b p-6">
 
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">
+            <h2 className="text-2xl font-bold text-black">
               Edit Match
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-black">
               Update match details
             </p>
           </div>
@@ -734,7 +734,7 @@ export default function EditMatchForm({
 
           <div>
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Tournament
               <span className="ml-1 text-red-500">
                 *
@@ -748,7 +748,7 @@ export default function EditMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               required
             >
 
@@ -781,7 +781,7 @@ export default function EditMatchForm({
 
           <div>
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Game
               <span className="ml-1 text-red-500">
                 *
@@ -795,7 +795,7 @@ export default function EditMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               required
             >
 
@@ -822,7 +822,7 @@ export default function EditMatchForm({
 
           <div>
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Team 1
               <span className="ml-1 text-red-500">
                 *
@@ -836,7 +836,7 @@ export default function EditMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               required
             >
 
@@ -867,7 +867,7 @@ export default function EditMatchForm({
 
           <div>
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Team 2
               <span className="ml-1 text-red-500">
                 *
@@ -881,7 +881,7 @@ export default function EditMatchForm({
                   e.target.value
                 )
               }
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               required
             >
 
@@ -912,7 +912,7 @@ export default function EditMatchForm({
 
           <div>
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
 
               Match Number
 
@@ -932,7 +932,7 @@ export default function EditMatchForm({
                 )
               }
               placeholder="Example: 1"
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
 
           </div>
@@ -943,7 +943,7 @@ export default function EditMatchForm({
 
           <div>
 
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-black">
               Stage
 
               <span className="ml-1 text-red-500">
@@ -958,7 +958,7 @@ export default function EditMatchForm({
                   e.target.value as MatchStage
                 )
               }
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               required
             >
 
@@ -993,7 +993,7 @@ export default function EditMatchForm({
 
             <div>
 
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-medium text-black">
                 Overs
 
                 <span className="ml-1 text-red-500">
@@ -1008,7 +1008,7 @@ export default function EditMatchForm({
                     e.target.value
                   )
                 }
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 required
               >
 
@@ -1047,7 +1047,7 @@ export default function EditMatchForm({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl border border-slate-300 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-xl border border-slate-300 px-5 py-3 font-medium text-black transition hover:bg-slate-50 disabled:opacity-50"
             >
               Cancel
             </button>
