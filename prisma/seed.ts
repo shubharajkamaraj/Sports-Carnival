@@ -85,14 +85,13 @@ async function main() {
     // ---------------------------------------------------
 
     {
-      name: "POTATO BALANCE",
+      name: "BOOK BALANCE",
       sportType: null,
       category: GameCategory.JUNIOR_KIDS,
       gameOrder: 1,
     },
-
     {
-      name: "BOOK BALANCE",
+      name: "POTATO RACE",
       sportType: null,
       category: GameCategory.JUNIOR_KIDS,
       gameOrder: 2,
@@ -154,7 +153,13 @@ async function main() {
       name: "TIMELY ARRIVAL",
       sportType: null,
       category: GameCategory.EXCLUDED,
-      gameOrder: 2,
+      gameOrder: null,
+    },
+     {
+      name: "PENALTY",
+      sportType: null,
+      category: GameCategory.EXCLUDED,
+      gameOrder: null,
     }
   ];
 

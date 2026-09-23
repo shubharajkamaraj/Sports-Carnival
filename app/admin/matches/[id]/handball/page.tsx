@@ -988,7 +988,7 @@ export default function HandballMatchPage() {
               loading ||
               eventActionLoading
             }
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 text-black rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50"
           >
             <RefreshCw size={16} />
             Refresh
@@ -1030,7 +1030,7 @@ export default function HandballMatchPage() {
                 {match.team1.name}
               </h2>
 
-              <div className="text-6xl font-bold mt-3">
+              <div className="text-6xl font-bold mt-3 text-black">
                 {team1Score}
               </div>
 
@@ -1040,7 +1040,7 @@ export default function HandballMatchPage() {
 
             <div className="text-center">
 
-              <div className="text-gray-400 font-semibold">
+              <div className="text-black font-semibold">
                 VS
               </div>
 
@@ -1057,7 +1057,7 @@ export default function HandballMatchPage() {
                     disabled={
                       matchActionLoading
                     }
-                    className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                    className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-black hover:bg-green-700 disabled:opacity-50"
                   >
                     {matchActionLoading
                       ? "Starting..."
@@ -1076,7 +1076,7 @@ export default function HandballMatchPage() {
                     disabled={
                       matchActionLoading
                     }
-                    className="rounded-xl bg-red-600 px-6 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    className="rounded-xl bg-red-600 px-6 py-3 font-semibold text-black hover:bg-red-700 disabled:opacity-50"
                   >
                     {matchActionLoading
                       ? "Ending..."
@@ -1102,7 +1102,7 @@ export default function HandballMatchPage() {
                 {match.team2.name}
               </h2>
 
-              <div className="text-6xl font-bold mt-3">
+              <div className="text-6xl font-bold mt-3 text-black">
                 {team2Score}
               </div>
 
@@ -1162,7 +1162,7 @@ export default function HandballMatchPage() {
                   saving ||
                   matchCompleted
                 }
-                className="w-full border rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-black disabled:bg-gray-100 disabled:text-gray-500"
               >
 
                 <option value="GOAL">
@@ -1208,7 +1208,7 @@ export default function HandballMatchPage() {
                   saving ||
                   matchCompleted
                 }
-                className="w-full border rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-black disabled:bg-gray-100 disabled:text-gray-500"
               >
 
                 <option value="">
@@ -1256,7 +1256,7 @@ export default function HandballMatchPage() {
                   saving ||
                   matchCompleted
                 }
-                className="w-full border rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-black disabled:bg-gray-100 disabled:text-gray-500"
               >
 
                 <option value="">
@@ -1311,7 +1311,7 @@ export default function HandballMatchPage() {
                     saving ||
                     matchCompleted
                   }
-                  className="w-full border rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-black disabled:bg-gray-100 disabled:text-gray-500"
                 >
 
                   <option value="">
@@ -1358,7 +1358,7 @@ export default function HandballMatchPage() {
                   matchCompleted
                 }
                 placeholder="Example: 25"
-                className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-black disabled:bg-gray-100 disabled:text-gray-500"
               />
 
             </div>
@@ -1384,7 +1384,7 @@ export default function HandballMatchPage() {
                   matchCompleted
                 }
                 placeholder="Optional description"
-                className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100"
+                className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100 text-black"
               />
 
             </div>

@@ -1,87 +1,234 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
-const navLinks = [
-  { name: "Home", href: "/" },
-  { name: "Games", href: "/games" },
-  { name: "Teams", href: "/teams" },
-  { name: "Schedule", href: "/schedule" },
-  { name: "Leaderboard", href: "/leaderboard" },
-  { name: "Gallery", href: "/gallery" },
-  { name: "Contact", href: "/contact" },
+const menuItems = [
+  {
+    name: "🏠 Home",
+    href: "/viewer",
+  },
+  {
+    name: "🏆 Matches",
+    href: "/viewer/matches",
+  },
+  {
+    name: "📊 Points Table",
+    href: "/viewer/points-table",
+  },
+  {
+    name: "🏅 Standings",
+    href: "/viewer/standings",
+  },
+  {
+    name: "⭐ Overall Awards",
+    href: "/viewer/overall-awards",
+  },
+  {
+    name: "👥 Teams",
+    href: "/viewer/teams",
+  },
 ];
 
-export default function Navbar() {
+export default function ViewerSidebar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm border-b">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <>
+      {/* =====================================================
+          MOBILE MENU BUTTON
+          Visible ONLY on mobile/tablet
+      ====================================================== */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="
+          fixed
+          left-4
+          top-4
+          z-[9999]
+          flex
+          h-11
+          w-11
+          items-center
+          justify-center
+          rounded-xl
+          border
+          border-white/20
+          bg-[#111936]
+          text-white
+          shadow-lg
+          lg:hidden
+        "
+        aria-label="Open menu"
+      >
+        <Menu size={26} />
+      </button>
 
-        <Link href="/" className="text-2xl font-bold text-blue-600">
-          Sports Carnival
-        </Link>
+      {/* =====================================================
+          MOBILE BACKDROP
+      ====================================================== */}
+      {open && (
+        <div
+          className="
+            fixed
+            inset-0
+            z-[9997]
+            bg-black/60
+            lg:hidden
+          "
+          onClick={() => setOpen(false)}
+        />
+      )}
 
-        {/* Desktop Menu */}
-        <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="hover:text-blue-600 transition"
+      {/* =====================================================
+          SIDEBAR
+          
+          MOBILE:
+          hidden by default
+          opens when ☰ is clicked
+
+          DESKTOP:
+          always visible
+      ====================================================== */}
+      <aside
+        className={`
+          fixed
+          left-0
+          top-0
+          z-[9998]
+          flex
+          h-screen
+          w-[300px]
+          flex-col
+          border-r
+          border-white/10
+          bg-[#070b19]
+
+          transform
+          transition-transform
+          duration-300
+          ease-in-out
+
+          ${
+            open
+              ? "translate-x-0"
+              : "-translate-x-full"
+          }
+
+          lg:translate-x-0
+        `}
+      >
+
+        {/* =====================================================
+            LOGO AREA
+        ====================================================== */}
+        <div
+          className="
+            flex
+            h-[123px]
+            shrink-0
+            items-center
+            border-b
+            border-white/10
+            px-4
+          "
+        >
+          <Image
+            src="/team-logos/team-gc.jpg"
+            alt="Team GC"
+            width={80}
+            height={80}
+            className="
+              h-20
+              w-20
+              shrink-0
+              object-contain
+            "
+          />
+
+          <div className="ml-5 min-w-0">
+            <h1
+              className="
+                whitespace-nowrap
+                font-serif
+                text-3xl
+                font-bold
+                tracking-wide
+                text-white
+              "
             >
-              {item.name}
-            </Link>
-          ))}
-        </nav>
+              TEAM GC
+            </h1>
 
-        {/* Desktop Buttons */}
-        <div className="hidden md:flex gap-3">
-          <button className="rounded-lg border px-4 py-2 hover:bg-gray-100">
-            Login
-          </button>
+            <p
+              className="
+                mt-1
+                whitespace-nowrap
+                font-serif
+                text-sm
+                font-semibold
+                tracking-[0.25em]
+                text-slate-300
+              "
+            >
+              SPORTS CARNIVAL
+            </p>
+          </div>
 
-          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-            Register
+          {/* Close button - mobile only */}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="
+              ml-auto
+              rounded-lg
+              p-2
+              text-slate-300
+              hover:bg-white/10
+              hover:text-white
+              lg:hidden
+            "
+            aria-label="Close menu"
+          >
+            <X size={24} />
           </button>
         </div>
 
-        {/* Mobile Button */}
-        <button
-          className="md:hidden"
-          onClick={() => setOpen(!open)}
-        >
-          {open ? <X size={28} /> : <Menu size={28} />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {open && (
-        <div className="md:hidden border-t bg-white">
-          <div className="flex flex-col p-5 gap-5">
-            {navLinks.map((item) => (
+        {/* =====================================================
+            MENU ITEMS
+        ====================================================== */}
+        <nav className="flex-1 overflow-y-auto px-3 py-5">
+          <div className="space-y-2">
+            {menuItems.map((item) => (
               <Link
-                key={item.name}
+                key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
+                className="
+                  flex
+                  min-h-[55px]
+                  w-full
+                  items-center
+                  rounded-xl
+                  px-4
+                  py-3
+                  font-serif
+                  text-lg
+                  text-slate-200
+                  transition
+                  hover:bg-white/10
+                  hover:text-white
+                "
               >
                 {item.name}
               </Link>
             ))}
-
-            <button className="rounded-lg border py-2">
-              Login
-            </button>
-
-            <button className="rounded-lg bg-blue-600 py-2 text-white">
-              Register
-            </button>
           </div>
-        </div>
-      )}
-    </header>
+        </nav>
+      </aside>
+    </>
   );
 }

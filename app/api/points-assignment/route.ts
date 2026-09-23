@@ -544,8 +544,7 @@ export async function POST(request: NextRequest) {
 
       if (
         points === null ||
-        !Number.isInteger(points) ||
-        points < 0
+        !Number.isInteger(points) 
       ) {
         return NextResponse.json(
           {

@@ -463,10 +463,10 @@ export default function MatchTable({
                         onClick={() =>
                           onEdit(match)
                         }
-                        disabled={
-                          match.status ===
-                          "LIVE"
-                        }
+                        // disabled={
+                        //   match.status ===
+                        //   "LIVE"
+                        // }
                         className="rounded-lg p-2 text-blue-300 transition hover:bg-blue-500/10 hover:text-blue-200 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Edit Match"
                       >
@@ -484,10 +484,10 @@ export default function MatchTable({
                             match.id
                           )
                         }
-                        disabled={
-                          match.status ===
-                          "LIVE"
-                        }
+                        // disabled={
+                        //   match.status ===
+                        //   "LIVE"
+                        // }
                         className="rounded-lg p-2 text-red-300 transition hover:bg-red-500/10 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Delete Match"
                       >

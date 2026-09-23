@@ -93,6 +93,8 @@ const POSITIONS = [
 ];
 
 const POINT_OPTIONS = [
+  -20,
+  -10,
   0,
   5,
   10,
