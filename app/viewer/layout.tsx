@@ -48,9 +48,7 @@ export default function ViewerLayout({
         text-white
       "
     >
-      {/* =====================================================
-          HEADER
-      ====================================================== */}
+      {/* ================= HEADER ================= */}
       <header
         className="
           sticky
@@ -81,9 +79,7 @@ export default function ViewerLayout({
             lg:px-7
           "
         >
-          {/* =================================================
-              MOBILE / TABLET MENU BUTTON
-          ================================================== */}
+          {/* Mobile Menu Button */}
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -113,9 +109,7 @@ export default function ViewerLayout({
             <Menu size={25} strokeWidth={2.5} />
           </button>
 
-          {/* =================================================
-              TEAM GC BRAND
-          ================================================== */}
+          {/* Logo + Title */}
           <Link
             href="/viewer"
             onClick={() => setMenuOpen(false)}
@@ -130,7 +124,6 @@ export default function ViewerLayout({
               sm:gap-4
             "
           >
-            {/* Logo */}
             <img
               src="/team-logos/team-gc-logo.png"
               alt="Team GC Logo"
@@ -145,7 +138,6 @@ export default function ViewerLayout({
               "
             />
 
-            {/* Brand */}
             <div className="flex min-w-0 flex-col justify-center">
               <span
                 className="
@@ -184,9 +176,7 @@ export default function ViewerLayout({
         </div>
       </header>
 
-      {/* =====================================================
-          MOBILE OVERLAY
-      ====================================================== */}
+      {/* ================= MOBILE OVERLAY ================= */}
       {menuOpen && (
         <button
           type="button"
@@ -205,14 +195,17 @@ export default function ViewerLayout({
         />
       )}
 
-      {/* =====================================================
-          PAGE LAYOUT
-      ====================================================== */}
-      <div className="flex min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-96px)]">
+      {/* ================= MAIN AREA ================= */}
+      <div
+        className="
+          flex
+          min-h-[calc(100vh-80px)]
+          w-full
 
-        {/* ===================================================
-            SIDEBAR
-        ==================================================== */}
+          sm:min-h-[calc(100vh-96px)]
+        "
+      >
+        {/* ================= SIDEBAR ================= */}
         <aside
           className={`
             fixed
@@ -246,9 +239,7 @@ export default function ViewerLayout({
             }
           `}
         >
-          {/* =================================================
-              MOBILE SIDEBAR HEADER
-          ================================================== */}
+          {/* Mobile Sidebar Header */}
           <div
             className="
               flex
@@ -302,7 +293,6 @@ export default function ViewerLayout({
               </div>
             </div>
 
-            {/* Close */}
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
@@ -325,16 +315,14 @@ export default function ViewerLayout({
             </button>
           </div>
 
-          {/* =================================================
-              SIDEBAR NAVIGATION
-          ================================================== */}
+          {/* Navigation */}
           <nav
             className="
-              h-[calc(100vh-80px)]
+              h-[calc(100%-80px)]
               overflow-y-auto
               p-3
 
-              sm:h-[calc(100vh-96px)]
+              sm:h-[calc(100%-96px)]
               sm:p-4
 
               lg:h-full
@@ -372,22 +360,40 @@ export default function ViewerLayout({
           </nav>
         </aside>
 
-        {/* ===================================================
-            MAIN CONTENT
-        ==================================================== */}
+        {/* ================= CONTENT ================= */}
         <main
           className="
-            min-h-[calc(100vh-80px)]
             min-w-0
             flex-1
             overflow-x-hidden
-
-            sm:min-h-[calc(100vh-96px)]
           "
         >
           {children}
         </main>
       </div>
+
+      {/* ================= FOOTER ================= */}
+      <footer
+        className="
+          w-full
+          border-t
+          border-white/10
+          bg-[#03050c]/70
+          px-6
+          py-4
+        "
+      >
+        <p
+          className="
+            text-right
+            text-sm
+            font-medium
+            text-slate-400
+          "
+        >
+          From the minds of Viji and Lisha
+        </p>
+      </footer>
     </div>
   );
 }
