@@ -1306,7 +1306,7 @@ async function undoLastPoint() {
               </div>
 
               <p className="mt-1 text-[10px] text-slate-400">
-                First to 11 • Win by 2
+                First to 15 • Win by 2
               </p>
 
             </div>

@@ -363,7 +363,7 @@ export default function ThrowballSummaryPage({
     opponentScore: number
   ) {
     return (
-      ownScore >= 11 &&
+      ownScore >= 15 &&
       ownScore - opponentScore >= 2
     );
   }
@@ -501,7 +501,7 @@ export default function ThrowballSummaryPage({
             </p>
 
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              First to 11 points with a 2-point lead
+              First to 15 points with a 2-point lead
             </p>
           </div>
 
@@ -699,29 +699,29 @@ export default function ThrowballSummaryPage({
               <p className="mt-1 text-xs leading-5 text-orange-800">
                 The match consists of one set.
                 A team must reach at least
-                11 points and lead by at least
+                15 points and lead by at least
                 2 points to win.
               </p>
 
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
 
                 <RuleCard
-                  score="11 - 9"
+                  score="15 - 13"
                   result="Win"
                 />
 
                 <RuleCard
-                  score="11 - 10"
+                  score="15 - 14"
                   result="Continue"
                 />
 
                 <RuleCard
-                  score="12 - 10"
+                  score="16 - 14"
                   result="Win"
                 />
 
                 <RuleCard
-                  score="13 - 11"
+                  score="17 - 15"
                   result="Win"
                 />
 
@@ -920,7 +920,7 @@ function SingleSetCard({
           </p>
 
           <p className="mt-1 text-xs text-slate-500">
-            Single set • 11 points • 2-point lead
+            Single set • 15 points • 2-point lead
           </p>
 
         </div>
@@ -983,7 +983,7 @@ function SingleSetCard({
           </p>
 
           <p className="mt-1 text-[10px] text-orange-600">
-            A team needs 11 points with a
+            A team needs 15 points with a
             minimum 2-point lead.
           </p>
 

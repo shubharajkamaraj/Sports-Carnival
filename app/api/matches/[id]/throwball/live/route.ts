@@ -17,7 +17,7 @@ type ScoreRequest = {
   pointReason?: string;
 };
 
-const TARGET_POINTS = 11;
+const TARGET_POINTS = 15;
 const WINNING_DIFFERENCE = 2;
 
 /* =========================================================

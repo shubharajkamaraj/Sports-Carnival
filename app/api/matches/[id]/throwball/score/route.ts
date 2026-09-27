@@ -317,7 +317,7 @@ export async function POST(
     let winnerTeamId: number | null = null;
 
     if (
-      team1Score >= 11 &&
+      team1Score >= 15 &&
       team1Score - team2Score >= 2
     ) {
       completed = true;
@@ -325,7 +325,7 @@ export async function POST(
     }
 
     if (
-      team2Score >= 11 &&
+      team2Score >= 15 &&
       team2Score - team1Score >= 2
     ) {
       completed = true;

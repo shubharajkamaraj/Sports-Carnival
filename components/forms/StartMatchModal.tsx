@@ -1173,7 +1173,7 @@ export default function StartMatchModal({
                   </p>
 
                   <p className="mt-1 font-bold text-orange-900">
-                    11 Points
+                    15 Points
                   </p>
 
                 </div>
@@ -1187,7 +1187,7 @@ export default function StartMatchModal({
                 </p>
 
                 <p className="mt-1 text-xs text-orange-700">
-                  The set continues beyond 11 if
+                  The set continues beyond 15 if
                   necessary until one team leads by
                   at least 2 points.
                 </p>
