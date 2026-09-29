@@ -328,6 +328,10 @@ const [undoing, setUndoing] = useState(false);
     }
   }
 
+  function swapBatsmen() {
+  setStrikerId(nonStrikerId);
+  setNonStrikerId(strikerId);
+}
   /*
    * =====================================================
    * CLEAR ACTIVE PLAYERS
@@ -4473,6 +4477,14 @@ async function addBall(
                 <h2 className="text-sm font-black">
                   PLAYERS
                 </h2>
+                  <button
+    type="button"
+    onClick={swapBatsmen}
+    disabled={!strikerId || !nonStrikerId}
+    className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-black text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    SWAP
+  </button>
 
                 <span className="text-[10px] font-bold text-slate-400">
                   {battingPlayers.length} batting
@@ -5473,6 +5485,7 @@ async function addBall(
                 <h2 className="mb-3 text-sm font-black">
                   CURRENT
                 </h2>
+
 
                 <div className="space-y-2">
 
