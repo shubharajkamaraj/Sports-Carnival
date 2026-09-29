@@ -165,18 +165,14 @@ type HandballSummary = {
 };
 
 type ThrowballScore = {
-  // This tournament uses ONE set per Throwball match.
   currentSet?: number | null;
 
-  // Set won counters are kept separately from the live points.
   team1SetsWon?: number | null;
   team2SetsWon?: number | null;
 
-  // Set 1 live points.
   set1Team1?: number | null;
   set1Team2?: number | null;
 
-  // Support alternative backend field names too.
   team1Set1Score?: number | null;
   team2Set1Score?: number | null;
   set1Team1Score?: number | null;
@@ -194,9 +190,6 @@ type Match = {
 
   stage?: string | null;
 
-  /*
-   * Only meaningful for cricket.
-   */
   overs?: number | null;
 
   team1Score: number;
@@ -216,6 +209,32 @@ type Match = {
   handballSummary?: HandballSummary | null;
 
   throwballScore?: ThrowballScore | null;
+};
+
+/* =========================================================
+   CRICKET DISPLAY TYPES
+========================================================= */
+
+type BattingStat = {
+  player: Player | null;
+  playerId: number;
+
+  runs: number;
+  balls: number;
+  fours: number;
+  sixes: number;
+
+  isOut: boolean;
+  dismissalType?: string | null;
+};
+
+type BowlingStat = {
+  player: Player | null;
+  playerId: number;
+
+  legalBalls: number;
+  runs: number;
+  wickets: number;
 };
 
 /* =========================================================
@@ -258,25 +277,38 @@ function mergeTeams(
 }
 
 /* =========================================================
-   LOAD TEAM PLAYERS
+   PLAYER LOOKUP
 ========================================================= */
 
-/*
- * Football/Handball/Throwball APIs sometimes return:
- *
- * {
- *   id: 7,
- *   name: "CHRIST KINGDOM",
- *   playerIds: [39,40,41,...]
- * }
- *
- * but don't return:
- *
- * players: [...]
- *
- * This function tries the team API and also the
- * /players endpoint.
- */
+function findPlayer(
+  playerId: number | null | undefined,
+  battingTeam: Team,
+  bowlingTeam: Team,
+  matchTeam1: Team,
+  matchTeam2: Team
+): Player | null {
+  if (playerId == null) {
+    return null;
+  }
+
+  const allPlayers = [
+    ...(battingTeam.players ?? []),
+    ...(bowlingTeam.players ?? []),
+    ...(matchTeam1.players ?? []),
+    ...(matchTeam2.players ?? []),
+  ];
+
+  return (
+    allPlayers.find(
+      (player) =>
+        Number(player.id) === Number(playerId)
+    ) ?? null
+  );
+}
+
+/* =========================================================
+   LOAD TEAM PLAYERS
+========================================================= */
 
 async function fetchTeamWithPlayers(
   team: Team | null | undefined
@@ -285,9 +317,6 @@ async function fetchTeamWithPlayers(
     return team ?? undefined;
   }
 
-  /*
-   * If players already exist, don't request again.
-   */
   if (
     Array.isArray(team.players) &&
     team.players.length > 0
@@ -295,20 +324,15 @@ async function fetchTeamWithPlayers(
     return team;
   }
 
-  const cacheBust = `t=${Date.now()}`;
-
   const possibleUrls = [
-    `/api/teams/${team.id}?${cacheBust}`,
-    `/api/teams/${team.id}/players?${cacheBust}`,
+    `/api/teams/${team.id}`,
+    `/api/teams/${team.id}/players`,
   ];
 
   for (const url of possibleUrls) {
     try {
       const response = await fetch(url, {
         cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
       });
 
       if (!response.ok) {
@@ -316,20 +340,6 @@ async function fetchTeamWithPlayers(
       }
 
       const data = await response.json();
-
-      /*
-       * Different APIs may return:
-       *
-       * { team: {...} }
-       *
-       * OR
-       *
-       * { players: [...] }
-       *
-       * OR
-       *
-       * [...]
-       */
 
       let fetchedTeam: any = null;
       let fetchedPlayers: Player[] = [];
@@ -364,9 +374,6 @@ async function fetchTeamWithPlayers(
         }
       }
 
-      /*
-       * If we received players, use them.
-       */
       if (fetchedPlayers.length > 0) {
         return {
           ...team,
@@ -395,16 +402,12 @@ async function fetchTeamWithPlayers(
       }
     } catch (error) {
       console.warn(
-        `Unable to load players for team ${team.id} from ${url}`,
+        `Unable to load players for team ${team.id}`,
         error
       );
     }
   }
 
-  /*
-   * If no API returned players, preserve the
-   * original team object.
-   */
   return team;
 }
 
@@ -555,6 +558,345 @@ function ballDisplay(
 }
 
 /* =========================================================
+   CRICKET BATTING STATS
+========================================================= */
+
+function getBattingStats(
+  innings: CricketInnings,
+  battingTeam: Team,
+  bowlingTeam: Team,
+  team1: Team,
+  team2: Team
+): BattingStat[] {
+  const balls =
+    innings.ballEvents ?? [];
+
+  const map =
+    new Map<number, BattingStat>();
+
+  for (const ball of balls) {
+    if (ball.strikerId == null) {
+      continue;
+    }
+
+    const player =
+      findPlayer(
+        ball.strikerId,
+        battingTeam,
+        bowlingTeam,
+        team1,
+        team2
+      );
+
+    const existing =
+      map.get(ball.strikerId);
+
+    const stat: BattingStat =
+      existing ?? {
+        player,
+        playerId: ball.strikerId,
+        runs: 0,
+        balls: 0,
+        fours: 0,
+        sixes: 0,
+        isOut: false,
+        dismissalType: null,
+      };
+
+    stat.runs +=
+      Number(ball.runsOffBat ?? 0);
+
+    /*
+     * Wides are not counted as balls
+     * faced by the batter.
+     */
+    const isWide =
+      String(
+        ball.extraType ?? ""
+      ).toUpperCase() === "WIDE";
+
+    if (
+      ball.isLegalDelivery ||
+      !isWide
+    ) {
+      stat.balls += 1;
+    }
+
+    if (
+      Number(ball.runsOffBat) === 4
+    ) {
+      stat.fours += 1;
+    }
+
+    if (
+      Number(ball.runsOffBat) === 6
+    ) {
+      stat.sixes += 1;
+    }
+
+    if (
+      ball.isWicket &&
+      ball.dismissedPlayerId ===
+        ball.strikerId
+    ) {
+      stat.isOut = true;
+      stat.dismissalType =
+        ball.dismissalType;
+    }
+
+    map.set(
+      ball.strikerId,
+      stat
+    );
+  }
+
+  /*
+   * Also add players who were dismissed
+   * but don't appear as striker in the
+   * available event data.
+   */
+  for (const ball of balls) {
+    if (
+      ball.dismissedPlayerId == null
+    ) {
+      continue;
+    }
+
+    const playerId =
+      ball.dismissedPlayerId;
+
+    if (!map.has(playerId)) {
+      map.set(playerId, {
+        player:
+          findPlayer(
+            playerId,
+            battingTeam,
+            bowlingTeam,
+            team1,
+            team2
+          ),
+        playerId,
+        runs: 0,
+        balls: 0,
+        fours: 0,
+        sixes: 0,
+        isOut: true,
+        dismissalType:
+          ball.dismissalType,
+      });
+    }
+  }
+
+  return Array.from(
+    map.values()
+  );
+}
+
+/* =========================================================
+   CURRENT BATTERS
+========================================================= */
+
+function getCurrentBatters(
+  innings: CricketInnings,
+  battingTeam: Team,
+  bowlingTeam: Team,
+  team1: Team,
+  team2: Team
+) {
+  const balls =
+    innings.ballEvents ?? [];
+
+  if (balls.length === 0) {
+    return {
+      strikerId: null,
+      nonStrikerId: null,
+    };
+  }
+
+  const latestBall =
+    balls[balls.length - 1];
+
+  return {
+    strikerId:
+      latestBall.strikerId ??
+      null,
+
+    nonStrikerId:
+      latestBall.nonStrikerId ??
+      null,
+  };
+}
+
+/* =========================================================
+   CRICKET BOWLING STATS
+========================================================= */
+
+function isBowlerWicket(
+  ball: CricketBallEvent
+) {
+  if (!ball.isWicket) {
+    return false;
+  }
+
+  const dismissal =
+    String(
+      ball.dismissalType ?? ""
+    ).toUpperCase();
+
+  /*
+   * These dismissals are normally not
+   * credited as wickets to the bowler.
+   */
+  const nonBowlerWickets = [
+    "RUN_OUT",
+    "RETIRED_HURT",
+    "RETIRED_OUT",
+    "OBSTRUCTING_THE_FIELD",
+    "TIMED_OUT",
+  ];
+
+  return !nonBowlerWickets.includes(
+    dismissal
+  );
+}
+
+function getBowlingStats(
+  innings: CricketInnings,
+  battingTeam: Team,
+  bowlingTeam: Team,
+  team1: Team,
+  team2: Team
+): BowlingStat[] {
+  const balls =
+    innings.ballEvents ?? [];
+
+  const map =
+    new Map<number, BowlingStat>();
+
+  for (const ball of balls) {
+    if (ball.bowlerId == null) {
+      continue;
+    }
+
+    const player =
+      findPlayer(
+        ball.bowlerId,
+        battingTeam,
+        bowlingTeam,
+        team1,
+        team2
+      );
+
+    const existing =
+      map.get(ball.bowlerId);
+
+    const stat: BowlingStat =
+      existing ?? {
+        player,
+        playerId: ball.bowlerId,
+        legalBalls: 0,
+        runs: 0,
+        wickets: 0,
+      };
+
+    if (ball.isLegalDelivery) {
+      stat.legalBalls += 1;
+    }
+
+    const extraType =
+      String(
+        ball.extraType ?? ""
+      ).toUpperCase();
+
+    /*
+     * Byes and leg-byes are not charged
+     * to the bowler.
+     */
+    if (
+      extraType !== "BYE" &&
+      extraType !== "LEG_BYE"
+    ) {
+      stat.runs += Number(
+        ball.totalRuns ?? 0
+      );
+    }
+
+    if (isBowlerWicket(ball)) {
+      stat.wickets += 1;
+    }
+
+    map.set(
+      ball.bowlerId,
+      stat
+    );
+  }
+
+  return Array.from(
+    map.values()
+  );
+}
+
+/* =========================================================
+   CURRENT BOWLER
+========================================================= */
+
+function getCurrentBowlerId(
+  innings: CricketInnings
+) {
+  const balls =
+    innings.ballEvents ?? [];
+
+  if (balls.length === 0) {
+    return null;
+  }
+
+  return (
+    balls[balls.length - 1]
+      .bowlerId ?? null
+  );
+}
+
+/* =========================================================
+   WICKET DETAILS
+========================================================= */
+
+function getWicketEvents(
+  innings: CricketInnings
+) {
+  return (innings.ballEvents ?? [])
+    .filter(
+      (ball) =>
+        ball.isWicket
+    )
+    .sort(
+      (a, b) =>
+        a.overNumber -
+          b.overNumber ||
+        a.ballNumber -
+          b.ballNumber
+    );
+}
+
+/* =========================================================
+   PLAYER NAME
+========================================================= */
+
+function playerName(
+  player: Player | null,
+  playerId?: number | null
+) {
+  if (player?.name) {
+    return player.name;
+  }
+
+  if (playerId != null) {
+    return `Player #${playerId}`;
+  }
+
+  return "Unknown Player";
+}
+
+/* =========================================================
    MAIN COMPONENT
 ========================================================= */
 
@@ -562,16 +904,6 @@ export default function ViewerMatchPage() {
   const router = useRouter();
 
   const params = useParams();
-
-  /*
-   * Supports:
-   *
-   * /viewer/matches/[matchId]
-   *
-   * and:
-   *
-   * /viewer/matches/[id]
-   */
 
   const rawMatchId =
     (params as any)?.matchId ??
@@ -588,6 +920,9 @@ export default function ViewerMatchPage() {
 
   const [loading, setLoading] =
     useState(true);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
 
   const [error, setError] =
     useState("");
@@ -620,6 +955,8 @@ export default function ViewerMatchPage() {
       if (initial) {
         setLoading(true);
         setError("");
+      } else {
+        setRefreshing(true);
       }
 
       try {
@@ -748,46 +1085,32 @@ export default function ViewerMatchPage() {
             players: [],
           };
 
-        /* ================================================
-           LOAD PLAYERS FOR NON-CRICKET SPORTS
-        ================================================ */
-
         /*
-         * Cricket already has players inside
-         * cricketInnings.
-         *
-         * Football / Handball / Throwball
-         * need the team API when only playerIds
-         * are returned.
+         * Load players for all sports.
+         * This is especially useful for Cricket,
+         * because striker/bowler IDs need names.
          */
+        const [
+          loadedTeam1,
+          loadedTeam2,
+        ] = await Promise.all([
+          fetchTeamWithPlayers(team1),
+          fetchTeamWithPlayers(team2),
+        ]);
 
-        if (sportType !== "CRICKET") {
-          const [
-            loadedTeam1,
-            loadedTeam2,
-          ] = await Promise.all([
-            fetchTeamWithPlayers(
-              team1
-            ),
-            fetchTeamWithPlayers(
-              team2
-            ),
-          ]);
+        if (loadedTeam1) {
+          team1 = loadedTeam1;
+        }
 
-          if (loadedTeam1) {
-            team1 = loadedTeam1;
-          }
-
-          if (loadedTeam2) {
-            team2 = loadedTeam2;
-          }
+        if (loadedTeam2) {
+          team2 = loadedTeam2;
         }
 
         /* ================================================
            CRICKET INNINGS
         ================================================ */
 
-        const cricketInnings =
+        let cricketInnings =
           sportType === "CRICKET"
             ? mergeCricketInnings(
                 basicMatch?.cricketInnings ??
@@ -797,6 +1120,35 @@ export default function ViewerMatchPage() {
                   []
               )
             : [];
+
+        /*
+         * Make sure team player information is
+         * also available inside each innings.
+         */
+        cricketInnings =
+          cricketInnings.map(
+            (innings) => ({
+              ...innings,
+
+              battingTeam:
+                mergeTeams(
+                  innings.battingTeam,
+                  innings.battingTeamId ===
+                    team1.id
+                    ? team1
+                    : team2
+                ),
+
+              bowlingTeam:
+                mergeTeams(
+                  innings.bowlingTeam,
+                  innings.bowlingTeamId ===
+                    team1.id
+                    ? team1
+                    : team2
+                ),
+            })
+          );
 
         /* ================================================
            FOOTBALL
@@ -833,11 +1185,6 @@ export default function ViewerMatchPage() {
             basicMatch?.team2Score ??
             0
         );
-
-        /*
-         * CRICKET:
-         * Always calculate score from innings.
-         */
 
         if (
           sportType === "CRICKET" &&
@@ -915,10 +1262,6 @@ export default function ViewerMatchPage() {
             summaryMatch?.stage ??
             null,
 
-          /*
-           * IMPORTANT:
-           * Only Cricket uses overs.
-           */
           overs:
             sportType === "CRICKET"
               ? basicMatch?.overs ??
@@ -956,51 +1299,7 @@ export default function ViewerMatchPage() {
         };
 
         setMatch(normalized);
-
-        console.log(
-          "================================"
-        );
-
-        console.log(
-          "VIEWER MATCH:",
-          normalized
-        );
-
-        console.log(
-          "MATCH ID:",
-          matchId
-        );
-
-        console.log(
-          "SPORT:",
-          sportType
-        );
-
-        console.log(
-          "TEAM 1:",
-          normalized.team1
-        );
-
-        console.log(
-          "TEAM 1 PLAYERS:",
-          normalized.team1
-            .players
-        );
-
-        console.log(
-          "TEAM 2:",
-          normalized.team2
-        );
-
-        console.log(
-          "TEAM 2 PLAYERS:",
-          normalized.team2
-            .players
-        );
-
-        console.log(
-          "================================"
-        );
+        setError("");
       } catch (err) {
         console.error(
           "Failed to load match:",
@@ -1019,6 +1318,8 @@ export default function ViewerMatchPage() {
           setLoading(false);
         }
 
+        setRefreshing(false);
+
         refreshingRef.current =
           false;
       }
@@ -1027,7 +1328,10 @@ export default function ViewerMatchPage() {
   );
 
   /* =======================================================
-     INITIAL LOAD + POLLING
+     INITIAL LOAD
+     
+     IMPORTANT:
+     NO AUTO REFRESH / NO setInterval
   ======================================================= */
 
   useEffect(() => {
@@ -1042,17 +1346,6 @@ export default function ViewerMatchPage() {
     }
 
     loadMatch(true);
-
-    const interval =
-      window.setInterval(() => {
-        loadMatch(false);
-      }, 3000);
-
-    return () => {
-      window.clearInterval(
-        interval
-      );
-    };
   }, [
     matchId,
     loadMatch,
@@ -1124,15 +1417,13 @@ export default function ViewerMatchPage() {
   ======================================================= */
 
   const sportType =
-    match.game?.sportType ??
-    "";
+    match.game?.sportType ?? "";
 
   const isLive =
     match.status === "LIVE";
 
   const cricketInnings =
-    match.cricketInnings ??
-    [];
+    match.cricketInnings ?? [];
 
   const currentCricketInnings =
     cricketInnings.length > 0
@@ -1176,7 +1467,7 @@ export default function ViewerMatchPage() {
       =================================================== */}
 
       <header className="border-b border-white/10 bg-[#0b1022]">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
           <button
             onClick={() =>
               router.push(
@@ -1188,12 +1479,26 @@ export default function ViewerMatchPage() {
             ← Back to Matches
           </button>
 
-          {isLive && (
-            <div className="flex items-center gap-2 rounded-full bg-red-500/20 px-4 py-2 text-sm font-bold text-red-300">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
-              LIVE
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() =>
+                loadMatch(false)
+              }
+              disabled={refreshing}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {refreshing
+                ? "Refreshing..."
+                : "↻ Refresh"}
+            </button>
+
+            {isLive && (
+              <div className="flex items-center gap-2 rounded-full bg-red-500/20 px-4 py-2 text-sm font-bold text-red-300">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+                LIVE
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1222,7 +1527,7 @@ export default function ViewerMatchPage() {
 
             <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h1 className="text-base font-black sm:text-3xl">
+                <h1 className="text-2xl font-black sm:text-3xl">
                   {match.game.name}
                 </h1>
 
@@ -1247,7 +1552,7 @@ export default function ViewerMatchPage() {
               {/* TEAM 1 */}
 
               <div className="text-center md:text-right">
-                <p className="break-words text-base font-black sm:text-3xl">
+                <p className="break-words text-xl font-black sm:text-2xl">
                   {match.team1.name}
                 </p>
 
@@ -1289,7 +1594,7 @@ export default function ViewerMatchPage() {
               {/* TEAM 2 */}
 
               <div className="text-center md:text-left">
-                <p className="break-words text-base font-black sm:text-3xl">
+                <p className="break-words text-xl font-black sm:text-2xl">
                   {match.team2.name}
                 </p>
 
@@ -1320,165 +1625,779 @@ export default function ViewerMatchPage() {
           "CRICKET" &&
           cricketInnings.length >
             0 && (
-            <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-7">
-              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-black">
-                    Cricket Innings
-                  </h2>
+            <section className="mt-6 space-y-6">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-7">
+                <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-black sm:text-2xl">
+                      Cricket Innings
+                    </h2>
 
-                  <p className="mt-1 text-sm text-white/50">
-                    Completed and ongoing
-                    innings
-                  </p>
+                    <p className="mt-1 text-sm text-white/50">
+                      Batting, bowling and
+                      wicket information
+                    </p>
+                  </div>
+
+                  {isLive && (
+                    <span className="w-fit rounded-full bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300">
+                      ● LIVE
+                    </span>
+                  )}
                 </div>
 
-                {isLive && (
-                  <span className="w-fit rounded-full bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300">
-                    ● LIVE
-                  </span>
-                )}
-              </div>
+                <div className="grid gap-5 lg:grid-cols-2">
+                  {cricketInnings.map(
+                    (innings) => {
+                      const isCurrent =
+                        innings.id ===
+                        currentCricketInnings?.id;
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                {cricketInnings.map(
-                  (innings) => {
-                    const isCurrent =
-                      innings.id ===
-                      currentCricketInnings?.id;
+                      const balls =
+                        innings.ballEvents ??
+                        [];
 
-                    const balls =
-                      innings.ballEvents ??
-                      [];
+                      const lastBalls =
+                        balls.slice(-6);
 
-                    const lastBalls =
-                      balls.slice(-6);
+                      const battingTeam =
+                        innings.battingTeam ??
+                        (innings.battingTeamId ===
+                        match.team1.id
+                          ? match.team1
+                          : match.team2);
 
-                    const battingTeam =
-                      innings.battingTeam ??
-                      (innings.battingTeamId ===
-                      match.team1.id
-                        ? match.team1
-                        : match.team2);
+                      const bowlingTeam =
+                        innings.bowlingTeam ??
+                        (innings.bowlingTeamId ===
+                        match.team1.id
+                          ? match.team1
+                          : match.team2);
 
-                    return (
-                      <div
-                        key={
-                          innings.id
-                        }
-                        className={`rounded-2xl border p-5 ${
-                          isCurrent &&
-                          isLive
-                            ? "border-red-400/40 bg-red-500/[0.08]"
-                            : "border-white/10 bg-black/10"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-wider text-white/40">
-                              Innings{" "}
-                              {
-                                innings.inningsNumber
-                              }
-                            </p>
+                      const battingStats =
+                        getBattingStats(
+                          innings,
+                          battingTeam,
+                          bowlingTeam,
+                          match.team1,
+                          match.team2
+                        );
 
-                            <h3 className="mt-1 text-base font-black">
-                              {
-                                battingTeam.name
-                              }
-                            </h3>
-                          </div>
+                      const bowlingStats =
+                        getBowlingStats(
+                          innings,
+                          battingTeam,
+                          bowlingTeam,
+                          match.team1,
+                          match.team2
+                        );
 
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold ${
-                              isCurrent &&
-                              isLive
-                                ? "bg-red-500/20 text-red-300"
-                                : "bg-white/10 text-white/50"
-                            }`}
-                          >
-                            {isCurrent &&
+                      const currentBatters =
+                        getCurrentBatters(
+                          innings,
+                          battingTeam,
+                          bowlingTeam,
+                          match.team1,
+                          match.team2
+                        );
+
+                      const currentBowlerId =
+                        getCurrentBowlerId(
+                          innings
+                        );
+
+                      const striker =
+                        battingStats.find(
+                          (item) =>
+                            item.playerId ===
+                            currentBatters.strikerId
+                        );
+
+                      const nonStriker =
+                        battingStats.find(
+                          (item) =>
+                            item.playerId ===
+                            currentBatters.nonStrikerId
+                        );
+
+                      const currentBowler =
+                        bowlingStats.find(
+                          (item) =>
+                            item.playerId ===
+                            currentBowlerId
+                        );
+
+                      const wicketEvents =
+                        getWicketEvents(
+                          innings
+                        );
+
+                      return (
+                        <div
+                          key={
+                            innings.id
+                          }
+                          className={`rounded-2xl border p-5 ${
+                            isCurrent &&
                             isLive
-                              ? "ONGOING"
-                              : "COMPLETED"}
-                          </span>
-                        </div>
+                              ? "border-red-400/40 bg-red-500/[0.08]"
+                              : "border-white/10 bg-black/10"
+                          }`}
+                        >
+                          {/* INNINGS HEADER */}
 
-                        <div className="mt-6 flex items-end justify-between">
-                          <div>
-                            <p className="text-3xl font-black">
-                              {
-                                innings.totalRuns
-                              }
-                              /
-                              {
-                                innings.totalWickets
-                              }
-                            </p>
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-wider text-white/40">
+                                Innings{" "}
+                                {
+                                  innings.inningsNumber
+                                }
+                              </p>
 
-                            <p className="mt-1 text-sm text-white/50">
-                              {formatOvers(
-                                innings.legalBalls
-                              )}{" "}
-                              overs
-                            </p>
+                              <h3 className="mt-1 text-lg font-black">
+                                {
+                                  battingTeam.name
+                                }
+                              </h3>
+
+                              <p className="mt-1 text-xs text-white/40">
+                                Bowling:{" "}
+                                {
+                                  bowlingTeam.name
+                                }
+                              </p>
+                            </div>
+
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                isCurrent &&
+                                isLive
+                                  ? "bg-red-500/20 text-red-300"
+                                  : "bg-white/10 text-white/50"
+                              }`}
+                            >
+                              {isCurrent &&
+                              isLive
+                                ? "ONGOING"
+                                : "COMPLETED"}
+                            </span>
                           </div>
 
-                          {isCurrent &&
-                            target !==
-                              null && (
-                              <div className="text-right">
-                                <p className="text-xs uppercase text-white/40">
-                                  Target
-                                </p>
+                          {/* SCORE */}
 
-                                <p className="text-base font-black text-yellow-300">
-                                  {target}
+                          <div className="mt-6 flex items-end justify-between">
+                            <div>
+                              <p className="text-4xl font-black">
+                                {
+                                  innings.totalRuns
+                                }
+                                /
+                                {
+                                  innings.totalWickets
+                                }
+                              </p>
+
+                              <p className="mt-1 text-sm text-white/50">
+                                {formatOvers(
+                                  innings.legalBalls
+                                )}{" "}
+                                overs
+                              </p>
+                            </div>
+
+                            {isCurrent &&
+                              target !==
+                                null && (
+                                <div className="text-right">
+                                  <p className="text-xs uppercase text-white/40">
+                                    Target
+                                  </p>
+
+                                  <p className="text-lg font-black text-yellow-300">
+                                    {target}
+                                  </p>
+                                </div>
+                              )}
+                          </div>
+
+                          {/* =================================================
+                              CURRENT BATTING
+                          ================================================= */}
+
+                          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="mb-4 flex items-center justify-between">
+                              <div>
+                                <h4 className="text-base font-black">
+                                  🏏 Batting
+                                </h4>
+
+                                <p className="mt-1 text-xs text-white/40">
+                                  {battingTeam.name}
                                 </p>
                               </div>
-                            )}
-                        </div>
 
-                        {lastBalls.length >
-                          0 && (
-                          <div className="mt-5">
-                            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-white/40">
-                              Recent balls
-                            </p>
-
-                            <div className="flex flex-wrap gap-2">
-                              {lastBalls.map(
-                                (ball) => (
-                                  <span
-                                    key={
-                                      ball.id
-                                    }
-                                    className="flex h-9 min-w-9 items-center justify-center rounded-full bg-white/10 px-2 text-sm font-bold"
-                                  >
-                                    {ballDisplay(
-                                      ball
-                                    )}
-                                  </span>
-                                )
+                              {isCurrent &&
+                                isLive && (
+                                <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-bold text-green-300">
+                                  CURRENT
+                                </span>
                               )}
                             </div>
-                          </div>
-                        )}
 
-                        {balls.length ===
-                          0 &&
-                          isCurrent &&
-                          isLive && (
-                            <div className="mt-5 rounded-xl bg-white/5 p-4 text-center text-sm text-white/40">
-                              Waiting for
-                              the first
-                              ball...
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[560px] text-left text-sm">
+                                <thead>
+                                  <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-white/40">
+                                    <th className="px-2 py-3">
+                                      Batter
+                                    </th>
+
+                                    <th className="px-2 py-3 text-center">
+                                      R
+                                    </th>
+
+                                    <th className="px-2 py-3 text-center">
+                                      B
+                                    </th>
+
+                                    <th className="px-2 py-3 text-center">
+                                      4s
+                                    </th>
+
+                                    <th className="px-2 py-3 text-center">
+                                      6s
+                                    </th>
+
+                                    <th className="px-2 py-3 text-right">
+                                      Status
+                                    </th>
+                                  </tr>
+                                </thead>
+
+                                <tbody>
+                                  {battingStats
+                                    .map(
+                                      (
+                                        stat
+                                      ) => {
+                                        const isStriker =
+                                          stat.playerId ===
+                                          currentBatters.strikerId;
+
+                                        const isNonStriker =
+                                          stat.playerId ===
+                                          currentBatters.nonStrikerId;
+
+                                        return (
+                                          <tr
+                                            key={
+                                              stat.playerId
+                                            }
+                                            className="border-b border-white/5 last:border-0"
+                                          >
+                                            <td className="px-2 py-3">
+                                              <div className="flex items-center gap-2">
+                                                {isStriker && (
+                                                  <span className="text-yellow-300">
+                                                    ▶
+                                                  </span>
+                                                )}
+
+                                                <div>
+                                                  <p className="font-bold">
+                                                    {playerName(
+                                                      stat.player
+                                                    )}
+                                                  </p>
+
+                                                  {(isStriker ||
+                                                    isNonStriker) && (
+                                                    <p className="text-[11px] text-green-300">
+                                                      {isStriker
+                                                        ? "Striker"
+                                                        : "Non-striker"}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </td>
+
+                                            <td className="px-2 py-3 text-center font-black">
+                                              {
+                                                stat.runs
+                                              }
+                                            </td>
+
+                                            <td className="px-2 py-3 text-center text-white/70">
+                                              {
+                                                stat.balls
+                                              }
+                                            </td>
+
+                                            <td className="px-2 py-3 text-center text-white/70">
+                                              {
+                                                stat.fours
+                                              }
+                                            </td>
+
+                                            <td className="px-2 py-3 text-center text-white/70">
+                                              {
+                                                stat.sixes
+                                              }
+                                            </td>
+
+                                            <td className="px-2 py-3 text-right">
+                                              {stat.isOut ? (
+                                                <span className="text-xs font-bold text-red-300">
+                                                  OUT
+                                                </span>
+                                              ) : (
+                                                <span className="text-xs font-bold text-green-300">
+                                                  NOT OUT
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      }
+                                    )}
+
+                                  {battingStats.length ===
+                                    0 && (
+                                    <tr>
+                                      <td
+                                        colSpan={
+                                          6
+                                        }
+                                        className="px-2 py-5 text-center text-sm text-white/40"
+                                      >
+                                        No batting data
+                                        available
+                                        yet.
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
                             </div>
-                          )}
-                      </div>
-                    );
-                  }
-                )}
+
+                            {/* CURRENT BATTERS */}
+
+                            {isCurrent &&
+                              isLive && (
+                                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <div className="rounded-xl bg-white/5 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-white/40">
+                                      Striker
+                                    </p>
+
+                                    <p className="mt-1 text-base font-black">
+                                      {playerName(
+                                        striker?.player ?? null,
+                                        currentBatters.strikerId
+                                      )}
+                                    </p>
+
+                                    {striker && (
+                                      <p className="mt-1 text-sm text-white/50">
+                                        {striker.runs}{" "}
+                                        runs •{" "}
+                                        {striker.balls}{" "}
+                                        balls
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="rounded-xl bg-white/5 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-white/40">
+                                      Non-Striker
+                                    </p>
+
+                                    <p className="mt-1 text-base font-black">
+                                      {playerName(
+                                        nonStriker?.player ?? null,
+                                        currentBatters.nonStrikerId
+                                      )}
+                                    </p>
+
+                                    {nonStriker && (
+                                      <p className="mt-1 text-sm text-white/50">
+                                        {
+                                          nonStriker.runs
+                                        }{" "}
+                                        runs •{" "}
+                                        {
+                                          nonStriker.balls
+                                        }{" "}
+                                        balls
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+
+                          {/* =================================================
+                              CURRENT BOWLING
+                          ================================================= */}
+
+                          <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="mb-4 flex items-center justify-between">
+                              <div>
+                                <h4 className="text-base font-black">
+                                  🎯 Bowling
+                                </h4>
+
+                                <p className="mt-1 text-xs text-white/40">
+                                  {bowlingTeam.name}
+                                </p>
+                              </div>
+
+                              {isCurrent &&
+                                isLive && (
+                                <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300">
+                                  CURRENT
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[500px] text-left text-sm">
+                                <thead>
+                                  <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-white/40">
+                                    <th className="px-2 py-3">
+                                      Bowler
+                                    </th>
+
+                                    <th className="px-2 py-3 text-center">
+                                      O
+                                    </th>
+
+                                    <th className="px-2 py-3 text-center">
+                                      R
+                                    </th>
+
+                                    <th className="px-2 py-3 text-center">
+                                      W
+                                    </th>
+                                  </tr>
+                                </thead>
+
+                                <tbody>
+                                  {bowlingStats.map(
+                                    (
+                                      stat
+                                    ) => (
+                                      <tr
+                                        key={
+                                          stat.playerId
+                                        }
+                                        className="border-b border-white/5 last:border-0"
+                                      >
+                                        <td className="px-2 py-3">
+                                          <div className="flex items-center gap-2">
+                                            {stat.playerId ===
+                                              currentBowlerId && (
+                                              <span className="text-blue-300">
+                                                ●
+                                              </span>
+                                            )}
+
+                                            <div>
+                                              <p className="font-bold">
+                                                {playerName(
+                                                  stat.player
+                                                )}
+                                              </p>
+
+                                              {stat.playerId ===
+                                                currentBowlerId && (
+                                                <p className="text-[11px] text-blue-300">
+                                                  Current
+                                                  Bowler
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </td>
+
+                                        <td className="px-2 py-3 text-center font-bold">
+                                          {formatOvers(
+                                            stat.legalBalls
+                                          )}
+                                        </td>
+
+                                        <td className="px-2 py-3 text-center">
+                                          {
+                                            stat.runs
+                                          }
+                                        </td>
+
+                                        <td className="px-2 py-3 text-center font-black">
+                                          {
+                                            stat.wickets
+                                          }
+                                        </td>
+                                      </tr>
+                                    )
+                                  )}
+
+                                  {bowlingStats.length ===
+                                    0 && (
+                                    <tr>
+                                      <td
+                                        colSpan={
+                                          4
+                                        }
+                                        className="px-2 py-5 text-center text-sm text-white/40"
+                                      >
+                                        No bowling data
+                                        available
+                                        yet.
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {isCurrent &&
+                              isLive && (
+                                <div className="mt-4 rounded-xl bg-white/5 p-4">
+                                  <p className="text-xs uppercase tracking-wide text-white/40">
+                                    Current Bowler
+                                  </p>
+
+                                  <p className="mt-1 text-lg font-black">
+                                    {playerName(
+                                      currentBowler?.player ?? null,
+                                      currentBowlerId
+                                    )}
+                                  </p>
+
+                                  {currentBowler && (
+                                    <p className="mt-1 text-sm text-white/50">
+                                      {formatOvers(
+                                        currentBowler.legalBalls
+                                      )}{" "}
+                                      overs •{" "}
+                                      {
+                                        currentBowler.runs
+                                      }{" "}
+                                      runs •{" "}
+                                      {
+                                        currentBowler.wickets
+                                      }{" "}
+                                      wickets
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                          </div>
+
+                          {/* =================================================
+                              WICKET DATA
+                          ================================================= */}
+
+                          <div className="mt-5 rounded-2xl border border-red-400/10 bg-red-500/[0.04] p-4">
+                            <div className="mb-4 flex items-center justify-between">
+                              <div>
+                                <h4 className="text-base font-black">
+                                  🏏 Wickets
+                                </h4>
+
+                                <p className="mt-1 text-xs text-white/40">
+                                  Dismissal details
+                                </p>
+                              </div>
+
+                              <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300">
+                                {
+                                  wicketEvents.length
+                                }{" "}
+                                Wicket
+                                {wicketEvents.length !==
+                                1
+                                  ? "s"
+                                  : ""}
+                              </span>
+                            </div>
+
+                            {wicketEvents.length ===
+                            0 ? (
+                              <div className="rounded-xl bg-white/5 p-4 text-center text-sm text-white/40">
+                                No wickets yet.
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {wicketEvents.map(
+                                  (
+                                    wicket,
+                                    index
+                                  ) => {
+                                    const dismissedPlayer =
+                                      findPlayer(
+                                        wicket.dismissedPlayerId,
+                                        battingTeam,
+                                        bowlingTeam,
+                                        match.team1,
+                                        match.team2
+                                      );
+
+                                    const fielder =
+                                      findPlayer(
+                                        wicket.fielderId,
+                                        battingTeam,
+                                        bowlingTeam,
+                                        match.team1,
+                                        match.team2
+                                      );
+
+                                    const bowler =
+                                      findPlayer(
+                                        wicket.bowlerId,
+                                        battingTeam,
+                                        bowlingTeam,
+                                        match.team1,
+                                        match.team2
+                                      );
+
+                                    return (
+                                      <div
+                                        key={
+                                          wicket.id
+                                        }
+                                        className="rounded-xl border border-white/10 bg-white/5 p-4"
+                                      >
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 text-xs font-black text-red-300">
+                                                {index +
+                                                  1}
+                                              </span>
+
+                                              <div>
+                                                <p className="font-black">
+                                                  {playerName(
+                                                    dismissedPlayer,
+                                                    wicket.dismissedPlayerId
+                                                  )}
+                                                </p>
+
+                                                <p className="text-xs text-red-300">
+                                                  {wicket.dismissalType ??
+                                                    "WICKET"}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/60">
+                                            Over{" "}
+                                            {
+                                              wicket.overNumber
+                                            }
+                                            .
+                                            {
+                                              wicket.ballNumber
+                                            }
+                                          </span>
+                                        </div>
+
+                                        <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                                          <div className="rounded-lg bg-black/20 p-3">
+                                            <p className="text-[11px] uppercase text-white/30">
+                                              Bowler
+                                            </p>
+
+                                            <p className="mt-1 font-semibold">
+                                              {playerName(
+                                                bowler,
+                                                wicket.bowlerId
+                                              )}
+                                            </p>
+                                          </div>
+
+                                          <div className="rounded-lg bg-black/20 p-3">
+                                            <p className="text-[11px] uppercase text-white/30">
+                                              Fielder
+                                            </p>
+
+                                            <p className="mt-1 font-semibold">
+                                              {fielder
+                                                ? fielder.name
+                                                : wicket.fielderId !=
+                                                    null
+                                                  ? `Player #${wicket.fielderId}`
+                                                  : "—"}
+                                            </p>
+                                          </div>
+
+                                          <div className="rounded-lg bg-black/20 p-3">
+                                            <p className="text-[11px] uppercase text-white/30">
+                                              Ball Runs
+                                            </p>
+
+                                            <p className="mt-1 font-semibold">
+                                              {
+                                                wicket.totalRuns
+                                              }
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* =================================================
+                              RECENT BALLS
+                          ================================================= */}
+
+                          <div className="mt-5">
+                            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-white/40">
+                              Recent Balls
+                            </p>
+
+                            {lastBalls.length >
+                            0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {lastBalls.map(
+                                  (ball) => (
+                                    <span
+                                      key={
+                                        ball.id
+                                      }
+                                      className={`flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-sm font-bold ${
+                                        ball.isWicket
+                                          ? "bg-red-500/20 text-red-300"
+                                          : "bg-white/10"
+                                      }`}
+                                    >
+                                      {ballDisplay(
+                                        ball
+                                      )}
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              <div className="rounded-xl bg-white/5 p-4 text-center text-sm text-white/40">
+                                Waiting for the
+                                first ball...
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
               </div>
             </section>
           )}
@@ -1509,8 +2428,6 @@ export default function ViewerMatchPage() {
               )}
             </div>
 
-            {/* SCORE */}
-
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-2xl bg-white/5 p-6 text-center">
                 <p className="text-base font-bold">
@@ -1532,8 +2449,6 @@ export default function ViewerMatchPage() {
                 </p>
               </div>
             </div>
-
-            {/* STATISTICS */}
 
             {match
               .footballSummary
@@ -1596,8 +2511,6 @@ export default function ViewerMatchPage() {
                 </div>
               </div>
             )}
-
-            {/* EVENTS */}
 
             <div className="mt-6">
               <h3 className="mb-3 text-base font-bold">
@@ -1671,8 +2584,6 @@ export default function ViewerMatchPage() {
               )}
             </div>
 
-            {/* TOP SCORER */}
-
             {match
               .footballSummary
               ?.topScorer && (
@@ -1730,8 +2641,6 @@ export default function ViewerMatchPage() {
               )}
             </div>
 
-            {/* SCORE */}
-
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-2xl bg-white/5 p-6 text-center">
                 <p className="text-base font-bold">
@@ -1753,8 +2662,6 @@ export default function ViewerMatchPage() {
                 </p>
               </div>
             </div>
-
-            {/* EVENTS */}
 
             <div className="mt-6">
               <h3 className="mb-3 text-base font-bold">
@@ -1848,8 +2755,6 @@ export default function ViewerMatchPage() {
               )}
             </div>
 
-            {/* LIVE SCORE */}
-
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-2xl bg-white/5 p-6 text-center">
                 <p className="break-words text-base font-bold">
@@ -1874,13 +2779,6 @@ export default function ViewerMatchPage() {
 
             {match.throwballScore && (
               <>
-                {/*
-                 * SINGLE SET ONLY
-                 *
-                 * Current Set is always Set 1 for this match format.
-                 * Sets Won is separate and changes only when the backend
-                 * records that the single set has been won.
-                 */}
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="rounded-xl bg-white/5 p-4 text-center">
                     <p className="text-xs uppercase tracking-wide text-white/40">
@@ -1898,7 +2796,8 @@ export default function ViewerMatchPage() {
                     </p>
 
                     <p className="mt-1 text-base font-black">
-                      {match.throwballScore.team1SetsWon ?? 0}
+                      {match.throwballScore.team1SetsWon ??
+                        0}
                     </p>
                   </div>
 
@@ -1908,12 +2807,11 @@ export default function ViewerMatchPage() {
                     </p>
 
                     <p className="mt-1 text-base font-black">
-                      {match.throwballScore.team2SetsWon ?? 0}
+                      {match.throwballScore.team2SetsWon ??
+                        0}
                     </p>
                   </div>
                 </div>
-
-                {/* ONLY SET 1 */}
 
                 <div className="mt-5 overflow-hidden rounded-xl border border-white/10">
                   <div className="grid grid-cols-3 bg-white/10 p-3 text-sm font-bold">
@@ -1975,7 +2873,8 @@ export default function ViewerMatchPage() {
             </div>
 
             <p className="mt-2 text-sm text-red-200/60">
-              Refresh the page to see the latest live score.
+              Use the Refresh button above
+              to see the latest live score.
             </p>
           </div>
         )}
@@ -1991,8 +2890,6 @@ export default function ViewerMatchPage() {
                 key={team.id}
                 className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]"
               >
-                {/* TEAM HEADER */}
-
                 <div className="border-b border-white/10 p-5">
                   <h2 className="text-xl font-black">
                     {team.name}
@@ -2010,8 +2907,6 @@ export default function ViewerMatchPage() {
                   </p>
                 </div>
 
-                {/* PLAYERS */}
-
                 <div className="p-4">
                   {Array.isArray(
                     team.players
@@ -2027,8 +2922,6 @@ export default function ViewerMatchPage() {
                             }
                             className="flex items-center gap-3 rounded-xl bg-white/5 p-3"
                           >
-                            {/* PHOTO */}
-
                             {player.photo ? (
                               <img
                                 src={
@@ -2045,8 +2938,6 @@ export default function ViewerMatchPage() {
                                   "#"}
                               </div>
                             )}
-
-                            {/* PLAYER */}
 
                             <div className="min-w-0">
                               <p className="truncate font-semibold">
