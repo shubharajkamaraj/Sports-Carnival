@@ -4995,7 +4995,7 @@ async function addBall(
                         Fielder / Catcher
                       </option>
 
-                      {bowlingPlayers
+                      {/* {bowlingPlayers
                         .filter(
                           (player) =>
                             player.id !==
@@ -5018,7 +5018,13 @@ async function addBall(
                               }
                             </option>
                           )
-                        )}
+                        )} */}
+
+                        {bowlingPlayers.map((player) => (
+  <option key={player.id} value={player.id}>
+    {player.name}
+  </option>
+))}
 
                     </select>
 
