@@ -98,6 +98,7 @@ export const players: StaticPlayer[] = [
   { id: 73, name: "Navin", jerseyNo: 9 },
   { id: 74, name: "Daffin", jerseyNo: 2 },
   { id: 75, name: "Derrick", jerseyNo: 10 },
+  { id: 76, name: "Immanuel", jerseyNo: 2 },
 ];
 
 
