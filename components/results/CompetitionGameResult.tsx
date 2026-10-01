@@ -1,1019 +1,2435 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { CompetitionGame } from "./types";
+import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  Medal,
+  Plus,
+  Save,
+  Trash2,
+  Trophy,
+  Users,
+  X,
+  AlertTriangle,
+  RotateCcw,
+} from "lucide-react";
+
+type Props = {
+  game: Game;
+  onBack?: () => void;
+};
 
 type Player = {
   id: number;
   name: string;
-  teamId: number;
+  jerseyNo: number | null;
 };
 
-type Team = {
+type ParticipatingTeam = {
   id: number;
   name: string;
   players: Player[];
 };
 
-type ResultRow = {
-  position: 1 | 2 | 3;
-  teamId: number | null;
-  playerId: number | null;
+type Game = {
+  id: number;
+  name: string;
+  sportType?: string | null;
+};
+
+type RoundPlayer = {
+  playerId: number;
+  teamId: number;
+  position: number | null;
+  qualified: boolean;
+};
+
+type PreliminaryRound = {
+  id: string;
+  roundNumber: number;
+  players: RoundPlayer[];
+  saved: boolean;
+};
+
+type Position = 1 | 2 | 3 | 4;
+
+type FinalPlayer = {
+  playerId: number;
+  teamId: number;
+  position: Position;
 };
 
 type SavedResult = {
   id: number;
+  gameId: number;
+  teamId: number;
+  playerId: number | null;
+  round: number;
   position: number;
   points: number;
-
-  team: {
+  team?: {
     id: number;
     name: string;
-  };
-
-  player: {
+  } | null;
+  player?: {
     id: number;
     name: string;
-  };
+    jerseyNo: number | null;
+  } | null;
 };
 
-type Props = {
-  game: CompetitionGame;
-  onBack: () => void;
+const FINAL_POINTS: Record<Position, number> = {
+  1: 50,
+  2: 30,
+  3: 10,
+  4: 0,
 };
 
-const PLACE_INFO = {
+const PLACE_INFO: Record<
+  Position,
+  {
+    label: string;
+    medal: string;
+    points: number;
+  }
+> = {
   1: {
-    title: "1st Place",
+    label: "1st Place",
     medal: "🥇",
     points: 50,
   },
-
   2: {
-    title: "2nd Place",
+    label: "2nd Place",
     medal: "🥈",
     points: 30,
   },
-
   3: {
-    title: "3rd Place",
+    label: "3rd Place",
     medal: "🥉",
     points: 10,
   },
+  4: {
+    label: "4th Place",
+    medal: "🏅",
+    points: 0,
+  },
 };
 
-const EMPTY_RESULTS: ResultRow[] = [
-  {
-    position: 1,
-    teamId: null,
-    playerId: null,
-  },
-  {
-    position: 2,
-    teamId: null,
-    playerId: null,
-  },
-  {
-    position: 3,
-    teamId: null,
-    playerId: null,
-  },
-];
+function getStorageKey(gameId: number) {
+  return `competition-flexible-rounds-${gameId}`;
+}
+
+function createRound(roundNumber: number): PreliminaryRound {
+  return {
+    id: `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`,
+    roundNumber,
+    players: [],
+    saved: false,
+  };
+}
 
 export default function CompetitionGameResult({
   game,
   onBack,
 }: Props) {
-  // =====================================================
-  // ALL TEAMS
-  // =====================================================
+  /*
+   * =========================================================
+   * STATE
+   * =========================================================
+   */
 
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<ParticipatingTeam[]>(
+    []
+  );
 
-  // =====================================================
-  // 4 PARTICIPATING TEAMS
-  // =====================================================
+  const [rounds, setRounds] = useState<
+    PreliminaryRound[]
+  >([]);
 
-  const [participatingTeamIds, setParticipatingTeamIds] =
-    useState<(number | null)[]>([
-      null,
-      null,
-      null,
-      null,
-    ]);
+  const [finalPlayers, setFinalPlayers] = useState<
+    FinalPlayer[]
+  >([]);
 
-  // =====================================================
-  // RESULTS
-  // =====================================================
-
-  const [results, setResults] =
-    useState<ResultRow[]>(EMPTY_RESULTS);
-
-  const [savedResults, setSavedResults] =
-    useState<SavedResult[]>([]);
-
-  // =====================================================
-  // UI STATE
-  // =====================================================
+  const [savedResults, setSavedResults] = useState<
+    SavedResult[]
+  >([]);
 
   const [loading, setLoading] = useState(true);
-  const [savingTeams, setSavingTeams] = useState(false);
-  const [savingResults, setSavingResults] = useState(false);
-  const [message, setMessage] = useState("");
 
-  // =====================================================
-  // LOAD DATA
-  // =====================================================
+  const [savingRound, setSavingRound] =
+    useState<string | null>(null);
+
+  const [savingFinal, setSavingFinal] =
+    useState(false);
+
+  const [clearingResults, setClearingResults] =
+    useState(false);
+
+  const [error, setError] = useState<string | null>(
+    null
+  );
+
+  const [message, setMessage] =
+    useState<string | null>(null);
+
+  /*
+   * ---------------------------------------------------------
+   * FINAL TEAM / PLAYER SELECTION
+   * ---------------------------------------------------------
+   */
+
+  const [selectedTeamId, setSelectedTeamId] =
+    useState<number | "">("");
+
+  const [selectedPlayerId, setSelectedPlayerId] =
+    useState<number | "">("");
+
+  /*
+   * ---------------------------------------------------------
+   * PRELIMINARY ROUND TEAM / PLAYER SELECTION
+   * ---------------------------------------------------------
+   */
+
+  const [roundSelections, setRoundSelections] =
+    useState<
+      Record<
+        string,
+        {
+          teamId: number | "";
+          playerId: number | "";
+        }
+      >
+    >({});
+
+  /*
+   * ---------------------------------------------------------
+   * IMPORTANT:
+   * Prevent localStorage from being overwritten before
+   * existing data has been loaded.
+   * ---------------------------------------------------------
+   */
+
+  const [roundsHydrated, setRoundsHydrated] =
+    useState(false);
+
+  /*
+   * =========================================================
+   * LOAD DATA
+   * =========================================================
+   */
 
   useEffect(() => {
     loadData();
   }, [game.id]);
 
-  async function loadData() {
+  /*
+   * =========================================================
+   * LOAD LOCAL PRELIMINARY ROUNDS
+   * =========================================================
+   */
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const key = getStorageKey(game.id);
+
     try {
-      setLoading(true);
-      setMessage("");
+      const stored = localStorage.getItem(key);
 
-      const [participationResponse, resultsResponse] =
-        await Promise.all([
-          fetch(
-            `/api/competition-games/${game.id}/participation`,
-            {
-              cache: "no-store",
-            }
-          ),
+      if (!stored) {
+        setRounds([]);
+        setRoundsHydrated(true);
+        return;
+      }
 
-          fetch(
-            `/api/competition-games/${game.id}/results`,
-            {
-              cache: "no-store",
-            }
-          ),
-        ]);
+      const parsed = JSON.parse(stored);
+
+      if (Array.isArray(parsed)) {
+        setRounds(parsed);
+      } else {
+        setRounds([]);
+      }
+    } catch (err) {
+      console.error(
+        "Failed to load preliminary rounds:",
+        err
+      );
+
+      setRounds([]);
+    } finally {
+      setRoundsHydrated(true);
+    }
+  }, [game.id]);
+
+  /*
+   * =========================================================
+   * PERSIST PRELIMINARY ROUNDS
+   * =========================================================
+   */
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !roundsHydrated
+    ) {
+      return;
+    }
+
+    localStorage.setItem(
+      getStorageKey(game.id),
+      JSON.stringify(rounds)
+    );
+  }, [game.id, rounds, roundsHydrated]);
+
+  /*
+   * =========================================================
+   * LOAD API DATA
+   * =========================================================
+   */
+
+  async function loadData() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      /*
+       * -----------------------------------------------------
+       * LOAD PARTICIPATION
+       * -----------------------------------------------------
+       */
+
+      const participationResponse =
+        await fetch(
+          `/api/competition-games/${game.id}/participation`,
+          {
+            cache: "no-store",
+          }
+        );
 
       const participationData =
         await participationResponse.json();
 
-      const resultsData =
-        await resultsResponse.json();
-
       console.log(
-        "PARTICIPATION DATA:",
+        "PARTICIPATION API:",
         participationData
       );
 
-      console.log(
-        "RESULT DATA:",
-        resultsData
-      );
-
-      // ===================================================
-      // ALL TEAMS
-      // ===================================================
-
-      if (participationData.success) {
-        const allTeams =
-          participationData.teams ?? [];
-
-        setTeams(allTeams);
-
-        // =================================================
-        // EXISTING PARTICIPATING TEAMS
-        // =================================================
-
-        const selected =
-          participationData.participatingTeams ?? [];
-
-        setParticipatingTeamIds([
-          selected[0]?.id ?? null,
-          selected[1]?.id ?? null,
-          selected[2]?.id ?? null,
-          selected[3]?.id ?? null,
-        ]);
+      if (
+        !participationResponse.ok ||
+        !participationData.success
+      ) {
+        throw new Error(
+          participationData.error ||
+            participationData.message ||
+            "Failed to load teams."
+        );
       }
 
-      // ===================================================
-      // EXISTING RESULTS
-      // ===================================================
+      /*
+       * IMPORTANT FIX
+       *
+       * Your API currently returns:
+       *
+       * participatingTeams: []
+       *
+       * but:
+       *
+       * teams: [4 teams]
+       *
+       * Therefore use participatingTeams when available,
+       * otherwise fall back to teams.
+       */
 
-      if (resultsData.success) {
-        const loaded: SavedResult[] =
-          resultsData.results ?? [];
+      const loadedTeams =
+        Array.isArray(
+          participationData.participatingTeams
+        ) &&
+        participationData.participatingTeams.length > 0
+          ? participationData.participatingTeams
+          : Array.isArray(
+                participationData.teams
+              )
+            ? participationData.teams
+            : [];
 
-        setSavedResults(loaded);
+      const normalizedTeams: ParticipatingTeam[] =
+        loadedTeams.map((team: any) => ({
+          id: Number(team.id),
 
-        setResults([
-          {
-            position: 1,
-            teamId:
-              loaded.find(
-                (item) => item.position === 1
-              )?.team.id ?? null,
+          name: String(
+            team.name ?? `Team ${team.id}`
+          ),
 
-            playerId:
-              loaded.find(
-                (item) => item.position === 1
-              )?.player.id ?? null,
-          },
+          players: Array.isArray(team.players)
+            ? team.players.map(
+                (player: any) => ({
+                  id: Number(player.id),
 
-          {
-            position: 2,
-            teamId:
-              loaded.find(
-                (item) => item.position === 2
-              )?.team.id ?? null,
+                  name: String(
+                    player.name ??
+                      `Player ${player.id}`
+                  ),
 
-            playerId:
-              loaded.find(
-                (item) => item.position === 2
-              )?.player.id ?? null,
-          },
+                  jerseyNo:
+                    player.jerseyNo == null
+                      ? null
+                      : Number(
+                          player.jerseyNo
+                        ),
+                })
+              )
+            : [],
+        }));
 
-          {
-            position: 3,
-            teamId:
-              loaded.find(
-                (item) => item.position === 3
-              )?.team.id ?? null,
+      setTeams(normalizedTeams);
 
-            playerId:
-              loaded.find(
-                (item) => item.position === 3
-              )?.player.id ?? null,
-          },
-        ]);
+      /*
+       * -----------------------------------------------------
+       * LOAD SAVED RESULTS
+       * -----------------------------------------------------
+       */
+
+      try {
+        const resultsResponse =
+          await fetch(
+            `/api/competition-games/${game.id}/results`,
+            {
+              cache: "no-store",
+            }
+          );
+
+        const resultsData =
+          await resultsResponse.json();
+
+        console.log(
+          "RESULTS API:",
+          resultsData
+        );
+
+        if (
+          resultsResponse.ok &&
+          resultsData.success &&
+          Array.isArray(resultsData.results)
+        ) {
+          setSavedResults(
+            resultsData.results
+          );
+        } else {
+          setSavedResults([]);
+        }
+      } catch (resultsError) {
+        console.error(
+          "Failed to load results:",
+          resultsError
+        );
+
+        setSavedResults([]);
       }
-    } catch (error) {
+    } catch (err) {
       console.error(
-        "LOAD COMPETITION GAME ERROR:",
-        error
+        "Competition result load error:",
+        err
       );
 
-      setMessage(
-        "Failed to load competition game."
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load competition data."
       );
     } finally {
       setLoading(false);
     }
   }
 
-  // =====================================================
-  // PARTICIPATING TEAMS
-  // =====================================================
+  /*
+   * =========================================================
+   * VALID SAVED FINAL
+   *
+   * Old rows like:
+   *
+   * playerId: null
+   * points: 100
+   *
+   * are NOT considered a valid saved Final.
+   * =========================================================
+   */
 
-  const participatingTeams = useMemo(() => {
-    return participatingTeamIds
-      .map((id) =>
-        teams.find(
-          (team) => team.id === id
-        )
-      )
-      .filter(
-        (team): team is Team =>
-          Boolean(team)
+  const hasValidSavedFinal = useMemo(() => {
+    if (savedResults.length !== 4) {
+      return false;
+    }
+
+    const positions = savedResults.map(
+      (result) => result.position
+    );
+
+    const validPositions =
+      positions.length === 4 &&
+      new Set(positions).size === 4 &&
+      [1, 2, 3, 4].every((position) =>
+        positions.includes(position)
       );
-  }, [
-    participatingTeamIds,
-    teams,
-  ]);
 
-  // =====================================================
-  // GET PLAYERS FOR SELECTED TEAM
-  // =====================================================
+    if (!validPositions) {
+      return false;
+    }
+
+    const allPlayersValid =
+      savedResults.every(
+        (result) =>
+          result.playerId !== null &&
+          result.teamId > 0
+      );
+
+    if (!allPlayersValid) {
+      return false;
+    }
+
+    return true;
+  }, [savedResults]);
+
+  /*
+   * Old/broken database rows.
+   */
+
+  const hasInvalidOldResults =
+    savedResults.length > 0 &&
+    !hasValidSavedFinal;
+
+  /*
+   * =========================================================
+   * TEAM HELPERS
+   * =========================================================
+   */
+
+  function getTeam(teamId: number) {
+    return teams.find(
+      (team) => team.id === teamId
+    );
+  }
+
+  function getTeamName(teamId: number) {
+    return (
+      getTeam(teamId)?.name ??
+      "Unknown Team"
+    );
+  }
+
+  function getPlayer(playerId: number) {
+    for (const team of teams) {
+      const player = team.players.find(
+        (item) => item.id === playerId
+      );
+
+      if (player) {
+        return player;
+      }
+    }
+
+    return null;
+  }
 
   function getPlayersForTeam(
-    teamId: number | null
-  ): Player[] {
-    if (!teamId) {
+    teamId: number | ""
+  ) {
+    if (teamId === "") {
       return [];
     }
 
-    const team = teams.find(
-      (item) => item.id === teamId
+    return (
+      getTeam(Number(teamId))?.players ??
+      []
     );
-
-    return team?.players ?? [];
   }
 
-  // =====================================================
-  // SELECT PARTICIPATING TEAM
-  // =====================================================
+  /*
+   * =========================================================
+   * LOCAL STORAGE HELPERS
+   * =========================================================
+   */
 
-  function selectParticipatingTeam(
-    index: number,
-    teamId: number | null
+  function persistRounds(
+    nextRounds: PreliminaryRound[]
   ) {
-    setParticipatingTeamIds(
-      (current) => {
-        const next = [...current];
+    setRounds(nextRounds);
 
-        next[index] = teamId;
+    if (
+      typeof window !== "undefined"
+    ) {
+      localStorage.setItem(
+        getStorageKey(game.id),
+        JSON.stringify(nextRounds)
+      );
+    }
+  }
 
-        return next;
+  /*
+   * =========================================================
+   * PRELIMINARY ROUND HELPERS
+   * =========================================================
+   */
+
+  function getRoundSelection(
+    roundId: string
+  ) {
+    return (
+      roundSelections[roundId] ?? {
+        teamId: "",
+        playerId: "",
       }
     );
   }
 
-  // =====================================================
-  // SAVE PARTICIPATING TEAMS
-  // =====================================================
+  function getPlayersUsedBeforeRound(
+    roundIndex: number
+  ) {
+    const used = new Set<number>();
 
-  async function saveParticipatingTeams() {
+    for (
+      let index = 0;
+      index < roundIndex;
+      index++
+    ) {
+      for (const player of rounds[index]
+        .players) {
+        used.add(player.playerId);
+      }
+    }
+
+    return used;
+  }
+
+  /*
+   * =========================================================
+   * CHANGE PRELIMINARY TEAM
+   * =========================================================
+   */
+
+  function changeRoundTeam(
+    roundId: string,
+    teamId: number | ""
+  ) {
+    setRoundSelections(
+      (previous) => ({
+        ...previous,
+
+        [roundId]: {
+          teamId,
+          playerId: "",
+        },
+      })
+    );
+  }
+
+  /*
+   * =========================================================
+   * CHANGE PRELIMINARY PLAYER
+   * =========================================================
+   */
+
+  function changeRoundPlayer(
+    roundId: string,
+    playerId: number | ""
+  ) {
+    const current =
+      getRoundSelection(roundId);
+
+    setRoundSelections(
+      (previous) => ({
+        ...previous,
+
+        [roundId]: {
+          teamId: current.teamId,
+          playerId,
+        },
+      })
+    );
+  }
+
+  /*
+   * =========================================================
+   * ADD PLAYER TO PRELIMINARY ROUND
+   * =========================================================
+   */
+
+  function addPlayerToRound(
+    roundIndex: number
+  ) {
+    const round = rounds[roundIndex];
+
+    if (!round) return;
+
+    const selection =
+      getRoundSelection(round.id);
+
     if (
-      participatingTeamIds.some(
-        (id) => id === null
+      selection.teamId === "" ||
+      selection.playerId === ""
+    ) {
+      setError(
+        "Please select both a team and a player."
+      );
+      return;
+    }
+
+    if (round.players.length >= 4) {
+      setError(
+        "Each preliminary round can contain exactly 4 players."
+      );
+      return;
+    }
+
+    const teamId = Number(
+      selection.teamId
+    );
+
+    const playerId = Number(
+      selection.playerId
+    );
+
+    /*
+     * Player cannot be reused from an earlier round.
+     */
+
+    const usedBefore =
+      getPlayersUsedBeforeRound(
+        roundIndex
+      );
+
+    if (usedBefore.has(playerId)) {
+      setError(
+        "This player was already used in an earlier preliminary round."
+      );
+      return;
+    }
+
+    /*
+     * Player cannot appear twice in same round.
+     */
+
+    if (
+      round.players.some(
+        (item) =>
+          item.playerId === playerId
       )
     ) {
-      setMessage(
-        "Please select all 4 participating teams."
+      setError(
+        "This player is already added to this round."
       );
-
       return;
     }
 
-    const ids =
-      participatingTeamIds.filter(
-        (id): id is number =>
-          id !== null
+    /*
+     * Verify player belongs to selected team.
+     */
+
+    const team = getTeam(teamId);
+
+    const player =
+      team?.players.find(
+        (item) =>
+          item.id === playerId
       );
 
-    if (new Set(ids).size !== 4) {
-      setMessage(
-        "The same team cannot be selected more than once."
+    if (!team || !player) {
+      setError(
+        "Selected player does not belong to the selected team."
       );
-
       return;
     }
 
-    try {
-      setSavingTeams(true);
-      setMessage("");
+    const nextRounds = [...rounds];
 
-      const response = await fetch(
-        `/api/competition-games/${game.id}/participation`,
+    nextRounds[roundIndex] = {
+      ...round,
+
+      saved: false,
+
+      players: [
+        ...round.players,
+
         {
-          method: "POST",
+          playerId,
+          teamId,
+          position: null,
+          qualified: false,
+        },
+      ],
+    };
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+    persistRounds(nextRounds);
 
-          body: JSON.stringify({
-            teamIds: ids,
-          }),
-        }
-      );
+    setRoundSelections(
+      (previous) => ({
+        ...previous,
 
-      const data =
-        await response.json();
+        [round.id]: {
+          teamId: "",
+          playerId: "",
+        },
+      })
+    );
 
-      if (!data.success) {
-        setMessage(
-          data.error ??
-            "Failed to save participating teams."
-        );
+    setError(null);
 
-        return;
-      }
-
-      // =================================================
-      // RESET RESULTS
-      // =================================================
-
-      setResults(EMPTY_RESULTS);
-      setSavedResults([]);
-
-      setMessage(
-        "Participating teams saved successfully."
-      );
-
-      // Reload so players are definitely available
-      await loadData();
-    } catch (error) {
-      console.error(
-        "SAVE PARTICIPATING TEAMS ERROR:",
-        error
-      );
-
-      setMessage(
-        "Failed to save participating teams."
-      );
-    } finally {
-      setSavingTeams(false);
-    }
+    setMessage(
+      `${player.name} added to Round ${round.roundNumber}.`
+    );
   }
 
-  // =====================================================
-  // RESULT TEAM CHANGE
-  // =====================================================
+  /*
+   * =========================================================
+   * REMOVE PRELIMINARY PLAYER
+   * =========================================================
+   */
 
-  function changeResultTeam(
-    position: 1 | 2 | 3,
-    teamId: number | null
+  function removePlayerFromRound(
+    roundIndex: number,
+    playerId: number
   ) {
-    setResults((current) =>
-      current.map((result) =>
-        result.position === position  
-          ? {
-              ...result,
+    const round = rounds[roundIndex];
 
-              teamId,
+    if (!round) return;
 
-              // IMPORTANT:
-              // Reset player whenever team changes
-              playerId: null,
-            }
-          : result
-      )
-    );
-  }
+    const nextRounds = [...rounds];
 
-  // =====================================================
-  // RESULT PLAYER CHANGE
-  // =====================================================
+    nextRounds[roundIndex] = {
+      ...round,
 
-  function changeResultPlayer(
-    position: 1 | 2 | 3,
-    playerId: number | null
-  ) {
-    setResults((current) =>
-      current.map((result) =>
-        result.position === position
-          ? {
-              ...result,
-              playerId,
-            }
-          : result
-      )
-    );
-  }
+      saved: false,
 
-  // =====================================================
-  // SAVE RESULTS
-  // =====================================================
-
-  async function saveResults() {
-    if (participatingTeams.length !== 4) {
-      setMessage(
-        "Please save 4 participating teams first."
-      );
-
-      return;
-    }
-
-    const incomplete = results.some(
-      (result) =>
-        result.teamId === null ||
-        result.playerId === null
-    );
-
-    if (incomplete) {
-      setMessage(
-        "Please select a team and player for 1st, 2nd and 3rd place."
-      );
-
-      return;
-    }
-
-    // ===================================================
-    // CHECK DUPLICATE WINNING TEAM
-    // ===================================================
-
-    const teamIds = results.map(
-      (result) => result.teamId
-    );
-
-    if (new Set(teamIds).size !== 3) {
-      setMessage(
-        "A team cannot win more than one place."
-      );
-
-      return;
-    }
-
-    // ===================================================
-    // CHECK PLAYER BELONGS TO SELECTED TEAM
-    // ===================================================
-
-    for (const result of results) {
-      if (
-        result.teamId === null ||
-        result.playerId === null
-      ) {
-        continue;
-      }
-
-      const players =
-        getPlayersForTeam(
-          result.teamId
-        );
-
-      const playerExists =
-        players.some(
+      players:
+        round.players.filter(
           (player) =>
-            player.id ===
-            result.playerId
+            player.playerId !==
+            playerId
+        ),
+    };
+
+    persistRounds(nextRounds);
+
+    setError(null);
+  }
+
+  /*
+   * =========================================================
+   * PRELIMINARY POSITION
+   *
+   * TIES ARE ALLOWED.
+   * =========================================================
+   */
+
+  function updateRoundPosition(
+    roundIndex: number,
+    playerId: number,
+    position: number | null
+  ) {
+    const round = rounds[roundIndex];
+
+    if (!round) return;
+
+    const nextRounds = [...rounds];
+
+    nextRounds[roundIndex] = {
+      ...round,
+
+      saved: false,
+
+      players:
+        round.players.map(
+          (player) =>
+            player.playerId ===
+            playerId
+              ? {
+                  ...player,
+                  position,
+                }
+              : player
+        ),
+    };
+
+    persistRounds(nextRounds);
+  }
+
+  /*
+   * =========================================================
+   * QUALIFY PLAYER
+   * =========================================================
+   */
+
+  function toggleQualified(
+    roundIndex: number,
+    playerId: number
+  ) {
+    const round = rounds[roundIndex];
+
+    if (!round) return;
+
+    const nextRounds = [...rounds];
+
+    nextRounds[roundIndex] = {
+      ...round,
+
+      saved: false,
+
+      players:
+        round.players.map(
+          (player) =>
+            player.playerId ===
+            playerId
+              ? {
+                  ...player,
+                  qualified:
+                    !player.qualified,
+                }
+              : player
+        ),
+    };
+
+    persistRounds(nextRounds);
+
+    setError(null);
+  }
+
+  /*
+   * =========================================================
+   * SAVE PRELIMINARY ROUND
+   *
+   * LOCALSTORAGE ONLY.
+   * =========================================================
+   */
+
+  function savePreliminaryRound(
+    roundIndex: number
+  ) {
+    const round = rounds[roundIndex];
+
+    if (!round) return;
+
+    if (round.players.length !== 4) {
+      setError(
+        `Round ${round.roundNumber} must contain exactly 4 players.`
+      );
+      return;
+    }
+
+    const nextRounds = [...rounds];
+
+    nextRounds[roundIndex] = {
+      ...round,
+      saved: true,
+    };
+
+    persistRounds(nextRounds);
+
+    setSavingRound(round.id);
+
+    window.setTimeout(() => {
+      setSavingRound(null);
+    }, 400);
+
+    setError(null);
+
+    setMessage(
+      `Round ${round.roundNumber} saved locally.`
+    );
+  }
+
+  /*
+   * =========================================================
+   * ADD PRELIMINARY ROUND
+   * =========================================================
+   */
+
+  function addPreliminaryRound() {
+    if (teams.length !== 4) {
+      setError(
+        "Exactly 4 participating teams are required."
+      );
+      return;
+    }
+
+    const nextRoundNumber =
+      rounds.length === 0
+        ? 1
+        : Math.max(
+            ...rounds.map(
+              (round) =>
+                round.roundNumber
+            )
+          ) + 1;
+
+    const newRound =
+      createRound(nextRoundNumber);
+
+    const nextRounds = [
+      ...rounds,
+      newRound,
+    ];
+
+    persistRounds(nextRounds);
+
+    setError(null);
+
+    setMessage(
+      `Round ${nextRoundNumber} created.`
+    );
+  }
+
+  /*
+   * =========================================================
+   * DELETE PRELIMINARY ROUND
+   * =========================================================
+   */
+
+  function deletePreliminaryRound(
+    roundIndex: number
+  ) {
+    const round = rounds[roundIndex];
+
+    if (!round) return;
+
+    const confirmed =
+      window.confirm(
+        `Delete Preliminary Round ${round.roundNumber}?`
+      );
+
+    if (!confirmed) return;
+
+    const nextRounds = rounds
+      .filter(
+        (_, index) =>
+          index !== roundIndex
+      )
+      .map(
+        (item, index) => ({
+          ...item,
+          roundNumber: index + 1,
+        })
+      );
+
+    persistRounds(nextRounds);
+
+    setError(null);
+
+    setMessage(
+      "Preliminary round removed."
+    );
+  }
+
+  /*
+   * =========================================================
+   * QUALIFIED PLAYERS
+   * =========================================================
+   */
+
+  const qualifiedPlayers =
+    useMemo(() => {
+      const result: {
+        playerId: number;
+        teamId: number;
+      }[] = [];
+
+      for (const round of rounds) {
+        for (const player of round.players) {
+          if (!player.qualified) {
+            continue;
+          }
+
+          const alreadyExists =
+            result.some(
+              (item) =>
+                item.playerId ===
+                player.playerId
+            );
+
+          if (!alreadyExists) {
+            result.push({
+              playerId:
+                player.playerId,
+
+              teamId:
+                player.teamId,
+            });
+          }
+        }
+      }
+
+      return result;
+    }, [rounds]);
+
+  /*
+   * =========================================================
+   * FINAL ELIGIBLE PLAYERS
+   * =========================================================
+   *
+   * No preliminary rounds:
+   *     every participating player.
+   *
+   * Preliminary rounds:
+   *     only qualified players.
+   * =========================================================
+   */
+
+  const finalEligiblePlayers =
+    useMemo(() => {
+      if (rounds.length === 0) {
+        return teams.flatMap(
+          (team) =>
+            team.players.map(
+              (player) => ({
+                playerId:
+                  player.id,
+
+                teamId:
+                  team.id,
+              })
+            )
+        );
+      }
+
+      return qualifiedPlayers;
+    }, [
+      rounds.length,
+      teams,
+      qualifiedPlayers,
+    ]);
+
+  /*
+   * =========================================================
+   * FINAL PLAYER OPTIONS FOR SELECTED TEAM
+   * =========================================================
+   */
+
+  const finalPlayersForSelectedTeam =
+    useMemo(() => {
+      if (
+        selectedTeamId === ""
+      ) {
+        return [];
+      }
+
+      const team =
+        getTeam(
+          Number(selectedTeamId)
         );
 
-      if (!playerExists) {
-        setMessage(
-          "Selected player does not belong to the selected team."
+      if (!team) {
+        return [];
+      }
+
+      const eligibleIds =
+        new Set(
+          finalEligiblePlayers.map(
+            (item) =>
+              item.playerId
+          )
         );
 
-        return;
+      return team.players.filter(
+        (player) =>
+          eligibleIds.has(
+            player.id
+          ) &&
+          !finalPlayers.some(
+            (selected) =>
+              selected.playerId ===
+              player.id
+          )
+      );
+    }, [
+      selectedTeamId,
+      teams,
+      finalEligiblePlayers,
+      finalPlayers,
+    ]);
+
+  /*
+   * =========================================================
+   * CHANGE FINAL TEAM
+   * =========================================================
+   */
+
+  function changeFinalTeam(
+    teamId: number | ""
+  ) {
+    setSelectedTeamId(teamId);
+    setSelectedPlayerId("");
+  }
+
+  /*
+   * =========================================================
+   * ADD FINAL PLAYER
+   * =========================================================
+   */
+
+  function addFinalPlayer() {
+    if (
+      selectedTeamId === "" ||
+      selectedPlayerId === ""
+    ) {
+      setError(
+        "Please select both a team and a player."
+      );
+      return;
+    }
+
+    if (finalPlayers.length >= 4) {
+      setError(
+        "The Final can contain exactly 4 players."
+      );
+      return;
+    }
+
+    const teamId =
+      Number(selectedTeamId);
+
+    const playerId =
+      Number(selectedPlayerId);
+
+    const eligible =
+      finalEligiblePlayers.some(
+        (item) =>
+          item.playerId ===
+            playerId &&
+          item.teamId ===
+            teamId
+      );
+
+    if (!eligible) {
+      setError(
+        "This player is not eligible for the Final."
+      );
+      return;
+    }
+
+    if (
+      finalPlayers.some(
+        (player) =>
+          player.playerId ===
+          playerId
+      )
+    ) {
+      setError(
+        "This player is already selected."
+      );
+      return;
+    }
+
+    const usedPositions =
+      new Set(
+        finalPlayers.map(
+          (player) =>
+            player.position
+        )
+      );
+
+    const nextPosition =
+      (
+        [1, 2, 3, 4] as Position[]
+      ).find(
+        (position) =>
+          !usedPositions.has(
+            position
+          )
+      ) ?? 4;
+
+    setFinalPlayers(
+      (previous) => [
+        ...previous,
+        {
+          playerId,
+          teamId,
+          position:
+            nextPosition,
+        },
+      ]
+    );
+
+    setSelectedTeamId("");
+    setSelectedPlayerId("");
+
+    setError(null);
+
+    setMessage(
+      "Player added to Final."
+    );
+  }
+
+  /*
+   * =========================================================
+   * REMOVE FINAL PLAYER
+   * =========================================================
+   */
+
+  function removeFinalPlayer(
+    playerId: number
+  ) {
+    setFinalPlayers(
+      (previous) =>
+        previous
+          .filter(
+            (player) =>
+              player.playerId !==
+              playerId
+          )
+          .map(
+            (player, index) => ({
+              ...player,
+
+              position:
+                (index + 1) as Position,
+            })
+          )
+    );
+
+    setError(null);
+  }
+
+  /*
+   * =========================================================
+   * CHANGE FINAL POSITION
+   *
+   * Swaps positions when occupied.
+   * =========================================================
+   */
+
+  function changeFinalPosition(
+    playerId: number,
+    position: Position
+  ) {
+    setFinalPlayers(
+      (previous) => {
+        const current =
+          previous.find(
+            (player) =>
+              player.playerId ===
+              playerId
+          );
+
+        if (!current) {
+          return previous;
+        }
+
+        const other =
+          previous.find(
+            (player) =>
+              player.position ===
+                position &&
+              player.playerId !==
+                playerId
+          );
+
+        if (!other) {
+          return previous.map(
+            (player) =>
+              player.playerId ===
+              playerId
+                ? {
+                    ...player,
+                    position,
+                  }
+                : player
+          );
+        }
+
+        return previous.map(
+          (player) => {
+            if (
+              player.playerId ===
+              playerId
+            ) {
+              return {
+                ...player,
+                position,
+              };
+            }
+
+            if (
+              player.playerId ===
+              other.playerId
+            ) {
+              return {
+                ...player,
+
+                position:
+                  current.position,
+              };
+            }
+
+            return player;
+          }
+        );
+      }
+    );
+  }
+
+  /*
+   * =========================================================
+   * VALIDATE FINAL
+   * =========================================================
+   */
+
+  function validateFinal() {
+    if (finalPlayers.length !== 4) {
+      return "Final must contain exactly 4 players.";
+    }
+
+    const uniquePlayers =
+      new Set(
+        finalPlayers.map(
+          (player) =>
+            player.playerId
+        )
+      );
+
+    if (uniquePlayers.size !== 4) {
+      return "The same player cannot appear twice in the Final.";
+    }
+
+    const positions =
+      finalPlayers.map(
+        (player) =>
+          player.position
+      );
+
+    const uniquePositions =
+      new Set(positions);
+
+    if (
+      uniquePositions.size !== 4 ||
+      !(
+        [1, 2, 3, 4] as Position[]
+      ).every(
+        (position) =>
+          uniquePositions.has(
+            position
+          )
+      )
+    ) {
+      return "Final positions must be 1st, 2nd, 3rd and 4th.";
+    }
+
+    /*
+     * If preliminary rounds exist,
+     * every finalist must be qualified.
+     */
+
+    if (rounds.length > 0) {
+      for (const finalist of finalPlayers) {
+        const qualified =
+          qualifiedPlayers.some(
+            (player) =>
+              player.playerId ===
+                finalist.playerId &&
+              player.teamId ===
+                finalist.teamId
+          );
+
+        if (!qualified) {
+          return "Every Final player must be qualified from a preliminary round.";
+        }
       }
     }
 
-    try {
-      setSavingResults(true);
-      setMessage("");
+    return null;
+  }
 
-      const response = await fetch(
-        `/api/competition-games/${game.id}/results`,
-        {
-          method: "POST",
+  /*
+   * =========================================================
+   * SAVE FINAL
+   * =========================================================
+   */
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+  async function saveFinal() {
+    const validationError =
+      validateFinal();
 
-          body: JSON.stringify({
-            results:
-              results.map(
-                (result) => ({
-                  position:
-                    result.position,
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
-                  teamId:
-                    result.teamId,
-
-                  playerId:
-                    result.playerId,
-                })
-              ),
-          }),
-        }
+    if (hasValidSavedFinal) {
+      setError(
+        "Final results are already saved for this game."
       );
+      return;
+    }
+
+    try {
+      setSavingFinal(true);
+      setError(null);
+      setMessage(null);
+
+      const response =
+        await fetch(
+          `/api/competition-games/${game.id}/results`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              results:
+                finalPlayers
+                  .slice()
+                  .sort(
+                    (a, b) =>
+                      a.position -
+                      b.position
+                  )
+                  .map(
+                    (player) => ({
+                      position:
+                        player.position,
+
+                      teamId:
+                        player.teamId,
+
+                      playerId:
+                        player.playerId,
+                    })
+                  ),
+            }),
+          }
+        );
 
       const data =
         await response.json();
 
-      if (!data.success) {
-        setMessage(
-          data.error ??
-            "Failed to save results."
-        );
+      console.log(
+        "SAVE FINAL RESPONSE:",
+        data
+      );
 
-        return;
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.error ||
+            data.message ||
+            "Failed to save Final results."
+        );
       }
 
-      setSavedResults(
-        data.results ?? []
-      );
+      /*
+       * Reload results.
+       */
+
+      const resultsResponse =
+        await fetch(
+          `/api/competition-games/${game.id}/results`,
+          {
+            cache: "no-store",
+          }
+        );
+
+      const resultsData =
+        await resultsResponse.json();
+
+      if (
+        resultsResponse.ok &&
+        resultsData.success &&
+        Array.isArray(
+          resultsData.results
+        )
+      ) {
+        setSavedResults(
+          resultsData.results
+        );
+      }
+
+      setFinalPlayers([]);
+
+      setSelectedTeamId("");
+      setSelectedPlayerId("");
 
       setMessage(
-        "Results saved successfully."
+        "Final results saved successfully."
       );
-    } catch (error) {
+    } catch (err) {
       console.error(
-        "SAVE RESULTS ERROR:",
-        error
+        "SAVE FINAL ERROR:",
+        err
       );
 
-      setMessage(
-        "Failed to save results."
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save Final results."
       );
     } finally {
-      setSavingResults(false);
+      setSavingFinal(false);
     }
   }
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+  /*
+   * =========================================================
+   * CLEAR OLD INVALID RESULTS
+   * =========================================================
+   */
+
+  async function clearInvalidResults() {
+    const confirmed =
+      window.confirm(
+        "Delete the old/incomplete saved results for this game? This will not delete teams, players, or preliminary rounds."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setClearingResults(true);
+      setError(null);
+      setMessage(null);
+
+      const response =
+        await fetch(
+          `/api/competition-games/${game.id}/results`,
+          {
+            method: "DELETE",
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.error ||
+            "Failed to clear old results."
+        );
+      }
+
+      setSavedResults([]);
+      setFinalPlayers([]);
+
+      setSelectedTeamId("");
+      setSelectedPlayerId("");
+
+      setMessage(
+        "Old results cleared. You can now enter the Final."
+      );
+    } catch (err) {
+      console.error(
+        "CLEAR RESULTS ERROR:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to clear old results."
+      );
+    } finally {
+      setClearingResults(false);
+    }
+  }
+
+  /*
+   * =========================================================
+   * LOADING
+   * =========================================================
+   */
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-8">
-          Loading...
+      <div className="min-h-screen w-full bg-transparent p-4 sm:p-6">
+        <div className="mx-auto max-w-6xl rounded-2xl border border-white/10 bg-white/10 p-10 text-center text-white backdrop-blur-xl">
+          Loading competition game...
         </div>
       </div>
     );
   }
 
-  // =====================================================
-  // UI
-  // =====================================================
+  /*
+   * =========================================================
+   * PAGE
+   * =========================================================
+   */
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-5xl">
+    <div className="min-h-screen w-full bg-transparent px-3 py-4 sm:px-6 sm:py-6">
+      <div className="mx-auto w-full max-w-6xl space-y-5">
 
-        {/* ================================================= */}
-        {/* HEADER */}
-        {/* ================================================= */}
+        {/* ===================================================
+            HEADER
+        =================================================== */}
 
-        <div className="mb-6 flex items-start gap-4">
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            ← Back
-          </button>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-          <div>
-            <p className="text-sm font-semibold text-blue-600">
-              {game.category}
-            </p>
+          <div className="flex min-w-0 items-start gap-3">
 
-            <h1 className="text-3xl font-bold text-slate-900">
-              {game.name}
-            </h1>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-white transition hover:bg-white/20"
+              >
+                <ArrowLeft size={19} />
+              </button>
+            )}
 
-            <p className="mt-1 text-sm text-slate-500">
-              Select 4 participating teams and enter
-              the final results.
-            </p>
+            <div className="min-w-0">
+
+              <div className="flex flex-wrap items-center gap-2">
+
+                <Trophy
+                  size={21}
+                  className="text-yellow-300"
+                />
+
+                <h1 className="truncate text-xl font-bold text-white sm:text-2xl">
+                  {game.name}
+                </h1>
+
+              </div>
+
+              <p className="mt-1 text-sm text-slate-300">
+                Select teams and players for
+                preliminary rounds and Final.
+              </p>
+
+            </div>
+
           </div>
+
+          <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
+            <span className="font-bold">
+              {teams.length}
+            </span>{" "}
+            Participating Teams
+          </div>
+
         </div>
 
-        {/* ================================================= */}
-        {/* MESSAGE */}
-        {/* ================================================= */}
+        {/* ===================================================
+            ERROR
+        =================================================== */}
 
-        {message && (
-          <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
-            {message}
+        {error && (
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+
+            <span>{error}</span>
+
+            <button
+              type="button"
+              onClick={() =>
+                setError(null)
+              }
+              className="shrink-0 text-red-300 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+
           </div>
         )}
 
-        {/* ================================================= */}
-        {/* PARTICIPATING TEAMS */}
-        {/* ================================================= */}
+        {/* ===================================================
+            SUCCESS
+        =================================================== */}
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        {message && (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
 
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-slate-900">
-              Participating Teams
-            </h2>
+            <Check size={17} />
 
-            <p className="mt-1 text-sm text-slate-500">
-              Select exactly 4 teams participating in this
-              game.
-            </p>
+            {message}
+
           </div>
+        )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {participatingTeamIds.map(
-              (selectedTeamId, index) => (
-                <div
-                  key={index}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Team {index + 1}
-                  </label>
+        {/* ===================================================
+            OLD INVALID RESULTS WARNING
+        =================================================== */}
 
-                  <select
-                    value={
-                      selectedTeamId ?? ""
-                    }
-                    onChange={(event) =>
-                      selectParticipatingTeam(
-                        index,
-                        event.target.value
-                          ? Number(
-                              event.target.value
-                            )
-                          : null
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-black text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  >
-                    <option value="">
-                      Select team
-                    </option>
+        {hasInvalidOldResults && (
+          <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4 sm:p-5">
 
-                    {teams.map(
-                      (team) => {
-                        const alreadySelected =
-                          participatingTeamIds.some(
-                            (
-                              id,
-                              teamIndex
-                            ) =>
-                              id ===
-                                team.id &&
-                              teamIndex !==
-                                index
-                          );
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-                        return (
-                          <option
-                            key={team.id}
-                            value={team.id}
-                            disabled={
-                              alreadySelected
-                            }
-                          >
-                            {team.name}
-                          </option>
-                        );
-                      }
-                    )}
-                  </select>
+              <div className="flex items-start gap-3">
+
+                <AlertTriangle
+                  size={22}
+                  className="mt-0.5 shrink-0 text-orange-300"
+                />
+
+                <div>
+
+                  <p className="font-bold text-orange-200">
+                    Old incomplete Final results found
+                  </p>
+
+                  <p className="mt-1 text-sm text-orange-100/70">
+                    The database contains old result
+                    rows without players or with the
+                    previous points system. They are
+                    not being treated as a valid Final.
+                  </p>
+
                 </div>
-              )
-            )}
+
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  clearInvalidResults
+                }
+                disabled={
+                  clearingResults
+                }
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RotateCcw
+                  size={16}
+                />
+
+                {clearingResults
+                  ? "Clearing..."
+                  : "Clear Old Results"}
+              </button>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ===================================================
+            PARTICIPATING TEAMS
+        =================================================== */}
+
+        <section className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-xl backdrop-blur-xl sm:p-6">
+
+          <div className="mb-5 flex items-center justify-between gap-3">
+
+            <div>
+
+              <h2 className="text-lg font-bold text-white sm:text-xl">
+                Participating Teams
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-400">
+                These are the 4 teams selected
+                for this game.
+              </p>
+
+            </div>
+
+            <Users
+              size={22}
+              className="text-blue-300"
+            />
+
           </div>
 
-          <button
-            type="button"
-            onClick={
-              saveParticipatingTeams
-            }
-            disabled={savingTeams}
-            className="mt-6 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {savingTeams
-              ? "Saving..."
-              : "Save Participating Teams"}
-          </button>
-        </div>
+          {teams.length === 0 ? (
+            <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-5 text-center text-sm text-red-200">
+              No teams found.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
-        {/* ================================================= */}
-        {/* RESULTS */}
-        {/* ================================================= */}
-
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-slate-900">
-              Results
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Select the winning team and the player who
-              represented that team.
-            </p>
-          </div>
-
-          <div className="space-y-5">
-
-            {results.map((result) => {
-              const info =
-                PLACE_INFO[result.position];
-
-              const players =
-                getPlayersForTeam(
-                  result.teamId
-                );
-
-              return (
+              {teams.map((team) => (
                 <div
-                  key={result.position}
-                  className="rounded-2xl border border-slate-200 p-5"
+                  key={team.id}
+                  className="rounded-xl border border-white/10 bg-black/10 p-4"
                 >
 
-                  {/* PLACE HEADER */}
+                  <p className="font-bold text-white">
+                    {team.name}
+                  </p>
 
-                  <div className="mb-5 flex items-center justify-between">
+                  <p className="mt-1 text-xs text-slate-400">
+                    {team.players.length} players
+                  </p>
 
-                    <div className="flex items-center gap-3">
-
-                      <span className="text-3xl">
-                        {info.medal}
-                      </span>
-
-                      <div>
-                        <h3 className="font-bold text-slate-900">
-                          {info.title}
-                        </h3>
-
-                        <p className="text-sm text-slate-500">
-                          Winner receives{" "}
-                          {info.points} points
-                        </p>
-                      </div>
-
-                    </div>
-
-                    <div className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
-                      +{info.points} points
-                    </div>
-
-                  </div>
-
-                  {/* TEAM + PLAYER */}
-
-                  <div className="grid gap-4 md:grid-cols-2">
-
-                    {/* TEAM */}
-
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-slate-700">
-                        Team
-                      </label>
-
-                      <select
-                        value={
-                          result.teamId ?? ""
-                        }
-                        onChange={(event) =>
-                          changeResultTeam(
-                            result.position,
-                            event.target.value
-                              ? Number(
-                                  event.target.value
-                                )
-                              : null
-                          )
-                        }
-                        disabled={
-                          participatingTeams.length !==
-                          4
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none disabled:bg-slate-100 disabled:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      >
-
-                        <option value="">
-                          Select team
-                        </option>
-
-                        {participatingTeams.map(
-                          (team) => {
-
-                            const usedByOtherPlace =
-                              results.some(
-                                (other) =>
-                                  other.position !==
-                                    result.position &&
-                                  other.teamId ===
-                                    team.id
-                              );
-
-                            return (
-                              <option
-                                key={team.id}
-                                value={team.id}
-                                disabled={
-                                  usedByOtherPlace
-                                }
-                              >
-                                {team.name}
-                              </option>
-                            );
-                          }
-                        )}
-
-                      </select>
-                    </div>
-
-                    {/* PLAYER */}
-
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-slate-700">
-                        Player
-                      </label>
-
-                      <select
-                        value={
-                          result.playerId ?? ""
-                        }
-                        disabled={
-                          !result.teamId
-                        }
-                        onChange={(event) =>
-                          changeResultPlayer(
-                            result.position,
-                            event.target.value
-                              ? Number(
-                                  event.target.value
-                                )
-                              : null
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      >
-
-                        <option value="">
-                          {!result.teamId
-                            ? "Select team first"
-                            : players.length ===
-                              0
-                            ? "No players found"
-                            : "Select player"}
-                        </option>
-
-                        {players.map(
-                          (player) => (
-                            <option
-                              key={player.id}
-                              value={player.id}
-                            >
-                              {player.name}
-                            </option>
-                          )
-                        )}
-
-                      </select>
-
-                      {/* DEBUG / INFORMATION */}
-
-                      {result.teamId &&
-                        players.length ===
-                          0 && (
-                          <p className="mt-2 text-xs text-red-500">
-                            No players found for
-                            this team.
-                          </p>
-                        )}
-                    </div>
-
-                  </div>
                 </div>
-              );
-            })}
+              ))}
+
+            </div>
+          )}
+
+        </section>
+
+        {/* ===================================================
+            PRELIMINARY ROUNDS
+        =================================================== */}
+
+        <section className="space-y-4">
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+            <div>
+
+              <h2 className="text-lg font-bold text-white sm:text-xl">
+                Preliminary Rounds
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Optional. Each round has exactly
+                4 players. Preliminary data is
+                stored only in this browser.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              disabled={
+                teams.length !== 4 ||
+                hasValidSavedFinal
+              }
+              onClick={
+                addPreliminaryRound
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus size={18} />
+
+              Add Preliminary Round
+            </button>
 
           </div>
 
-          {/* SAVE RESULTS */}
+          {rounds.length === 0 ? (
 
-          <button
-            type="button"
-            onClick={saveResults}
-            disabled={
-              savingResults ||
-              participatingTeams.length !== 4
-            }
-            className="mt-6 w-full rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {savingResults
-              ? "Saving Results..."
-              : "Save Results"}
-          </button>
+            <div className="rounded-2xl border border-dashed border-blue-400/20 bg-blue-500/[0.05] p-6 text-center">
 
-        </div>
+              <p className="font-semibold text-white">
+                Direct Final
+              </p>
 
-        {/* ================================================= */}
-        {/* SAVED RESULTS */}
-        {/* ================================================= */}
+              <p className="mt-1 text-sm text-slate-400">
+                No preliminary rounds have
+                been created. You can directly
+                select any participating player
+                for the Final.
+              </p>
 
-        {savedResults.length > 0 && (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            </div>
 
-            <h2 className="mb-5 text-xl font-bold text-slate-900">
-              Saved Results
-            </h2>
+          ) : (
 
-            <div className="space-y-3">
+            <div className="space-y-5">
 
-              {savedResults.map(
-                (result) => {
+              {rounds.map(
+                (round, roundIndex) => {
 
-                  const position =
-                    result.position as
-                      | 1
-                      | 2
-                      | 3;
+                  const selection =
+                    getRoundSelection(
+                      round.id
+                    );
+
+                  const playersForSelectedTeam =
+                    getPlayersForTeam(
+                      selection.teamId
+                    );
+
+                  const usedBefore =
+                    getPlayersUsedBeforeRound(
+                      roundIndex
+                    );
 
                   return (
                     <div
-                      key={result.id}
-                      className="flex items-center justify-between rounded-xl bg-slate-50 p-4"
+                      key={round.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-xl backdrop-blur-xl sm:p-6"
                     >
 
-                      <div className="flex items-center gap-3">
+                      {/* ROUND HEADER */}
 
-                        <span className="text-2xl">
-                          {
-                            PLACE_INFO[
-                              position
-                            ].medal
-                          }
-                        </span>
+                      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
                         <div>
 
-                          <p className="font-bold text-slate-900">
-                            {result.team.name}
+                          <div className="flex flex-wrap items-center gap-2">
+
+                            <span className="rounded-lg bg-blue-500/15 px-2.5 py-1 text-xs font-bold text-blue-300">
+                              ROUND{" "}
+                              {
+                                round.roundNumber
+                              }
+                            </span>
+
+                            {round.saved && (
+                              <span className="rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                                Saved locally
+                              </span>
+                            )}
+
+                          </div>
+
+                          <p className="mt-2 text-sm text-slate-400">
+                            {round.players.length}/4
+                            players
                           </p>
 
-                          <p className="text-sm text-slate-500">
-                            {result.player.name}
-                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            deletePreliminaryRound(
+                              roundIndex
+                            )
+                          }
+                          disabled={
+                            hasValidSavedFinal
+                          }
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Trash2 size={16} />
+                          Delete Round
+                        </button>
+
+                      </div>
+
+                      {/* =====================================
+                          TEAM → PLAYER → ADD
+                      ===================================== */}
+
+                      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-black/10 p-3 sm:grid-cols-[1fr_1fr_auto] sm:p-4">
+
+                        {/* TEAM */}
+
+                        <div>
+
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Team
+                          </label>
+
+                          <div className="relative">
+
+                            <select
+                              value={
+                                selection.teamId
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                changeRoundTeam(
+                                  round.id,
+                                  event
+                                    .target
+                                    .value ===
+                                    ""
+                                    ? ""
+                                    : Number(
+                                        event
+                                          .target
+                                          .value
+                                      )
+                                )
+                              }
+                              disabled={
+                                round.players.length >=
+                                  4 ||
+                                hasValidSavedFinal
+                              }
+                              className="w-full appearance-none rounded-xl border border-white/10 bg-slate-900 px-3 py-3 pr-10 text-sm text-white outline-none transition focus:border-blue-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+
+                              <option
+                                value=""
+                                className="bg-slate-900"
+                              >
+                                Select Team
+                              </option>
+
+                              {teams.map(
+                                (team) => (
+                                  <option
+                                    key={
+                                      team.id
+                                    }
+                                    value={
+                                      team.id
+                                    }
+                                    className="bg-slate-900"
+                                  >
+                                    {
+                                      team.name
+                                    }
+                                  </option>
+                                )
+                              )}
+
+                            </select>
+
+                            <ChevronDown
+                              size={17}
+                              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                            />
+
+                          </div>
+
+                        </div>
+
+                        {/* PLAYER */}
+
+                        <div>
+
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Player
+                          </label>
+
+                          <div className="relative">
+
+                            <select
+                              value={
+                                selection.playerId
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                changeRoundPlayer(
+                                  round.id,
+                                  event
+                                    .target
+                                    .value ===
+                                    ""
+                                    ? ""
+                                    : Number(
+                                        event
+                                          .target
+                                          .value
+                                      )
+                                )
+                              }
+                              disabled={
+                                selection.teamId ===
+                                  "" ||
+                                round.players.length >=
+                                  4 ||
+                                hasValidSavedFinal
+                              }
+                              className="w-full appearance-none rounded-xl border border-white/10 bg-slate-900 px-3 py-3 pr-10 text-sm text-white outline-none transition focus:border-blue-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+
+                              <option
+                                value=""
+                                className="bg-slate-900"
+                              >
+                                {selection.teamId ===
+                                ""
+                                  ? "Select team first"
+                                  : "Select Player"}
+                              </option>
+
+                              {playersForSelectedTeam
+                                .filter(
+                                  (
+                                    player
+                                  ) =>
+                                    !usedBefore.has(
+                                      player.id
+                                    ) &&
+                                    !round.players.some(
+                                      (
+                                        selected
+                                      ) =>
+                                        selected.playerId ===
+                                        player.id
+                                    )
+                                )
+                                .map(
+                                  (
+                                    player
+                                  ) => (
+                                    <option
+                                      key={
+                                        player.id
+                                      }
+                                      value={
+                                        player.id
+                                      }
+                                      className="bg-slate-900"
+                                    >
+                                      {
+                                        player.name
+                                      }
+
+                                      {player.jerseyNo !=
+                                      null
+                                        ? ` (#${player.jerseyNo})`
+                                        : ""}
+                                    </option>
+                                  )
+                                )}
+
+                            </select>
+
+                            <ChevronDown
+                              size={17}
+                              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                            />
+
+                          </div>
+
+                        </div>
+
+                        {/* ADD */}
+
+                        <div className="flex items-end">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPlayerToRound(
+                                roundIndex
+                              )
+                            }
+                            disabled={
+                              round.players.length >=
+                                4 ||
+                              selection.teamId ===
+                                "" ||
+                              selection.playerId ===
+                                "" ||
+                              hasValidSavedFinal
+                            }
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                          >
+                            <Plus size={17} />
+                            Add
+                          </button>
 
                         </div>
 
                       </div>
 
-                      <div className="font-bold text-blue-600">
-                        +{result.points}
+                      {/* ROUND PLAYERS */}
+
+                      <div className="mt-4 space-y-3">
+
+                        {round.players.length ===
+                        0 ? (
+
+                          <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-sm text-slate-500">
+                            Select a team and
+                            player above, then
+                            click Add.
+                          </div>
+
+                        ) : (
+
+                          round.players.map(
+                            (
+                              roundPlayer
+                            ) => {
+
+                              const player =
+                                getPlayer(
+                                  roundPlayer.playerId
+                                );
+
+                              return (
+                                <div
+                                  key={
+                                    roundPlayer.playerId
+                                  }
+                                  className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/10 p-3 sm:flex-row sm:items-center sm:justify-between"
+                                >
+
+                                  <div className="min-w-0">
+
+                                    <p className="font-semibold text-white">
+                                      {
+                                        player?.name ??
+                                        "Unknown Player"
+                                      }
+                                    </p>
+
+                                    <p className="mt-1 text-xs text-slate-400">
+                                      {
+                                        getTeamName(
+                                          roundPlayer.teamId
+                                        )
+                                      }
+
+                                      {player?.jerseyNo !=
+                                      null
+                                        ? ` • #${player.jerseyNo}`
+                                        : ""}
+                                    </p>
+
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-2">
+
+                                    {/* POSITION */}
+
+                                    <select
+                                      value={
+                                        roundPlayer.position ??
+                                        ""
+                                      }
+                                      onChange={(
+                                        event
+                                      ) =>
+                                        updateRoundPosition(
+                                          roundIndex,
+                                          roundPlayer.playerId,
+                                          event
+                                            .target
+                                            .value ===
+                                            ""
+                                            ? null
+                                            : Number(
+                                                event
+                                                  .target
+                                                  .value
+                                              )
+                                        )
+                                      }
+                                      disabled={
+                                        hasValidSavedFinal
+                                      }
+                                      className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white outline-none disabled:opacity-50"
+                                    >
+
+                                      <option
+                                        value=""
+                                        className="bg-slate-900"
+                                      >
+                                        Position
+                                      </option>
+
+                                      <option
+                                        value="1"
+                                        className="bg-slate-900"
+                                      >
+                                        1st
+                                      </option>
+
+                                      <option
+                                        value="2"
+                                        className="bg-slate-900"
+                                      >
+                                        2nd
+                                      </option>
+
+                                      <option
+                                        value="3"
+                                        className="bg-slate-900"
+                                      >
+                                        3rd
+                                      </option>
+
+                                      <option
+                                        value="4"
+                                        className="bg-slate-900"
+                                      >
+                                        4th
+                                      </option>
+
+                                    </select>
+
+                                    {/* QUALIFY */}
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        toggleQualified(
+                                          roundIndex,
+                                          roundPlayer.playerId
+                                        )
+                                      }
+                                      disabled={
+                                        hasValidSavedFinal
+                                      }
+                                      className={`rounded-lg px-3 py-2 text-xs font-bold transition ${
+                                        roundPlayer.qualified
+                                          ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"
+                                          : "bg-white/5 text-slate-400 hover:bg-white/10"
+                                      } disabled:cursor-not-allowed disabled:opacity-40`}
+                                    >
+                                      {roundPlayer.qualified
+                                        ? "Qualified"
+                                        : "Qualify"}
+                                    </button>
+
+                                    {/* REMOVE */}
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        removePlayerFromRound(
+                                          roundIndex,
+                                          roundPlayer.playerId
+                                        )
+                                      }
+                                      disabled={
+                                        hasValidSavedFinal
+                                      }
+                                      className="rounded-lg border border-red-400/20 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                      <Trash2
+                                        size={15}
+                                      />
+                                    </button>
+
+                                  </div>
+
+                                </div>
+                              );
+                            }
+                          )
+
+                        )}
+
+                      </div>
+
+                      {/* SAVE ROUND */}
+
+                      <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+
+                        <p className="text-xs text-slate-500">
+                          Qualification is optional:
+                          0–4 players can qualify.
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            savePreliminaryRound(
+                              roundIndex
+                            )
+                          }
+                          disabled={
+                            round.players.length !==
+                              4 ||
+                            hasValidSavedFinal ||
+                            savingRound ===
+                              round.id
+                          }
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+
+                          <Save size={16} />
+
+                          {savingRound ===
+                          round.id
+                            ? "Saving..."
+                            : "Save Round"}
+
+                        </button>
+
                       </div>
 
                     </div>
@@ -1022,8 +2438,583 @@ export default function CompetitionGameResult({
               )}
 
             </div>
+
+          )}
+
+        </section>
+
+        {/* ===================================================
+            FINAL
+        =================================================== */}
+
+        <section className="rounded-2xl border border-yellow-400/10 bg-white/[0.06] p-4 shadow-xl backdrop-blur-xl sm:p-6">
+
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+            <div>
+
+              <div className="flex items-center gap-2">
+
+                <Medal
+                  size={21}
+                  className="text-yellow-300"
+                />
+
+                <h2 className="text-lg font-bold text-white sm:text-xl">
+                  Final
+                </h2>
+
+              </div>
+
+              <p className="mt-1 text-sm text-slate-400">
+
+                {rounds.length === 0
+                  ? "Direct Final — select any participating player."
+                  : "Select only qualified players from the preliminary rounds."}
+
+              </p>
+
+            </div>
+
+            <div className="rounded-xl bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-200">
+              {finalPlayers.length}/4 Selected
+            </div>
+
           </div>
-        )}
+
+          {/* =================================================
+              VALID SAVED FINAL
+          ================================================= */}
+
+          {hasValidSavedFinal ? (
+
+            <div className="space-y-3">
+
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">
+                ✓ Final Results Saved
+              </div>
+
+              {savedResults
+                .slice()
+                .sort(
+                  (a, b) =>
+                    a.position -
+                    b.position
+                )
+                .map((result) => {
+
+                  const position =
+                    result.position as Position;
+
+                  const info =
+                    PLACE_INFO[position];
+
+                  return (
+                    <div
+                      key={result.id}
+                      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+
+                      <div className="flex items-center gap-3">
+
+                        <span className="text-2xl">
+                          {info?.medal ??
+                            "🏅"}
+                        </span>
+
+                        <div>
+
+                          <p className="font-bold text-white">
+                            {info?.label ??
+                              `${result.position}th Place`}
+                          </p>
+
+                          <p className="mt-1 text-sm text-slate-300">
+                            {result.player
+                              ?.name ??
+                              "Unknown Player"}
+                          </p>
+
+                          <p className="text-xs text-slate-500">
+                            {result.team
+                              ?.name ??
+                              getTeamName(
+                                result.teamId
+                              )}
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      <div className="text-left sm:text-right">
+
+                        <p className="text-lg font-bold text-yellow-300">
+                          {result.points}
+                        </p>
+
+                        <p className="text-xs text-slate-500">
+                          points
+                        </p>
+
+                      </div>
+
+                    </div>
+                  );
+                })}
+
+            </div>
+
+          ) : (
+
+            <>
+              {/* =============================================
+                  FINAL TEAM → PLAYER → ADD
+              ============================================= */}
+
+              <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-black/10 p-3 sm:grid-cols-[1fr_1fr_auto] sm:p-4">
+
+                {/* TEAM */}
+
+                <div>
+
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Team
+                  </label>
+
+                  <div className="relative">
+
+                    <select
+                      value={
+                        selectedTeamId
+                      }
+                      onChange={(event) =>
+                        changeFinalTeam(
+                          event.target
+                            .value ===
+                            ""
+                            ? ""
+                            : Number(
+                                event.target
+                                  .value
+                              )
+                        )
+                      }
+                      disabled={
+                        finalPlayers.length >=
+                          4 ||
+                        hasValidSavedFinal
+                      }
+                      className="w-full appearance-none rounded-xl border border-white/10 bg-slate-900 px-3 py-3 pr-10 text-sm text-white outline-none transition focus:border-yellow-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+
+                      <option
+                        value=""
+                        className="bg-slate-900"
+                      >
+                        Select Team
+                      </option>
+
+                      {teams
+                        .filter(
+                          (team) =>
+                            finalEligiblePlayers.some(
+                              (item) =>
+                                item.teamId ===
+                                team.id &&
+                                !finalPlayers.some(
+                                  (selected) =>
+                                    selected.playerId ===
+                                    item.playerId
+                                )
+                            )
+                        )
+                        .map((team) => (
+                          <option
+                            key={team.id}
+                            value={team.id}
+                            className="bg-slate-900"
+                          >
+                            {team.name}
+                          </option>
+                        ))}
+
+                    </select>
+
+                    <ChevronDown
+                      size={17}
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+
+                  </div>
+
+                </div>
+
+                {/* PLAYER */}
+
+                <div>
+
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Player
+                  </label>
+
+                  <div className="relative">
+
+                    <select
+                      value={
+                        selectedPlayerId
+                      }
+                      onChange={(event) =>
+                        setSelectedPlayerId(
+                          event.target
+                            .value ===
+                            ""
+                            ? ""
+                            : Number(
+                                event.target
+                                  .value
+                              )
+                        )
+                      }
+                      disabled={
+                        selectedTeamId ===
+                          "" ||
+                        finalPlayers.length >=
+                          4 ||
+                        hasValidSavedFinal
+                      }
+                      className="w-full appearance-none rounded-xl border border-white/10 bg-slate-900 px-3 py-3 pr-10 text-sm text-white outline-none transition focus:border-yellow-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+
+                      <option
+                        value=""
+                        className="bg-slate-900"
+                      >
+                        {selectedTeamId ===
+                        ""
+                          ? "Select team first"
+                          : finalPlayersForSelectedTeam.length ===
+                              0
+                            ? "No eligible players"
+                            : "Select Player"}
+                      </option>
+
+                      {finalPlayersForSelectedTeam.map(
+                        (player) => (
+                          <option
+                            key={
+                              player.id
+                            }
+                            value={
+                              player.id
+                            }
+                            className="bg-slate-900"
+                          >
+                            {player.name}
+
+                            {player.jerseyNo !=
+                            null
+                              ? ` (#${player.jerseyNo})`
+                              : ""}
+                          </option>
+                        )
+                      )}
+
+                    </select>
+
+                    <ChevronDown
+                      size={17}
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+
+                  </div>
+
+                </div>
+
+                {/* ADD */}
+
+                <div className="flex items-end">
+
+                  <button
+                    type="button"
+                    onClick={
+                      addFinalPlayer
+                    }
+                    disabled={
+                      finalPlayers.length >=
+                        4 ||
+                      selectedTeamId ===
+                        "" ||
+                      selectedPlayerId ===
+                        "" ||
+                      hasValidSavedFinal
+                    }
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                  >
+                    <Plus size={17} />
+                    Add
+                  </button>
+
+                </div>
+
+              </div>
+
+              {/* =============================================
+                  FINAL PLAYERS
+              ============================================= */}
+
+              <div className="mt-4 space-y-3">
+
+                {finalPlayers.length ===
+                0 ? (
+
+                  <div className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-500">
+                    Select a team and player
+                    above, then click Add.
+                  </div>
+
+                ) : (
+
+                  finalPlayers
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        a.position -
+                        b.position
+                    )
+                    .map(
+                      (
+                        finalPlayer
+                      ) => {
+
+                        const player =
+                          getPlayer(
+                            finalPlayer.playerId
+                          );
+
+                        const info =
+                          PLACE_INFO[
+                            finalPlayer.position
+                          ];
+
+                        return (
+                          <div
+                            key={
+                              finalPlayer.playerId
+                            }
+                            className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+                          >
+
+                            <div className="flex items-center gap-3">
+
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-yellow-500/10 text-lg">
+                                {
+                                  info.medal
+                                }
+                              </div>
+
+                              <div>
+
+                                <p className="font-bold text-white">
+                                  {player?.name ??
+                                    "Unknown Player"}
+                                </p>
+
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {
+                                    getTeamName(
+                                      finalPlayer.teamId
+                                    )
+                                  }
+
+                                  {player?.jerseyNo !=
+                                  null
+                                    ? ` • #${player.jerseyNo}`
+                                    : ""}
+                                </p>
+
+                              </div>
+
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+
+                              {/* POSITION */}
+
+                              <select
+                                value={
+                                  finalPlayer.position
+                                }
+                                onChange={(
+                                  event
+                                ) =>
+                                  changeFinalPosition(
+                                    finalPlayer.playerId,
+                                    Number(
+                                      event
+                                        .target
+                                        .value
+                                    ) as Position
+                                  )
+                                }
+                                disabled={
+                                  hasValidSavedFinal
+                                }
+                                className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs font-semibold text-white outline-none disabled:opacity-50"
+                              >
+
+                                <option
+                                  value="1"
+                                  className="bg-slate-900"
+                                >
+                                  1st — 50
+                                </option>
+
+                                <option
+                                  value="2"
+                                  className="bg-slate-900"
+                                >
+                                  2nd — 30
+                                </option>
+
+                                <option
+                                  value="3"
+                                  className="bg-slate-900"
+                                >
+                                  3rd — 10
+                                </option>
+
+                                <option
+                                  value="4"
+                                  className="bg-slate-900"
+                                >
+                                  4th — 0
+                                </option>
+
+                              </select>
+
+                              {/* POINTS */}
+
+                              <span className="rounded-lg bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-300">
+                                {
+                                  FINAL_POINTS[
+                                    finalPlayer.position
+                                  ]
+                                }{" "}
+                                points
+                              </span>
+
+                              {/* REMOVE */}
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeFinalPlayer(
+                                    finalPlayer.playerId
+                                  )
+                                }
+                                disabled={
+                                  hasValidSavedFinal
+                                }
+                                className="rounded-lg border border-red-400/20 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                <Trash2
+                                  size={15}
+                                />
+                              </button>
+
+                            </div>
+
+                          </div>
+                        );
+                      }
+                    )
+
+                )}
+
+              </div>
+
+              {/* =============================================
+                  SAVE FINAL
+              ============================================= */}
+
+              <div className="mt-5 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+
+                <div>
+
+                  <p className="font-semibold text-white">
+                    Final Points System
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+
+                    {(
+                      [
+                        1,
+                        2,
+                        3,
+                        4,
+                      ] as Position[]
+                    ).map(
+                      (position) => (
+                        <span
+                          key={
+                            position
+                          }
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300"
+                        >
+                          {
+                            PLACE_INFO[
+                              position
+                            ].medal
+                          }{" "}
+                          {
+                            PLACE_INFO[
+                              position
+                            ].label
+                          }{" "}
+                          —{" "}
+                          {
+                            PLACE_INFO[
+                              position
+                            ].points
+                          }{" "}
+                          pts
+                        </span>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={saveFinal}
+                  disabled={
+                    savingFinal ||
+                    finalPlayers.length !==
+                      4 ||
+                    hasValidSavedFinal
+                  }
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+
+                  <Save size={17} />
+
+                  {savingFinal
+                    ? "Saving Final..."
+                    : "Save Final Results"}
+
+                </button>
+
+              </div>
+
+            </>
+
+          )}
+
+        </section>
 
       </div>
     </div>

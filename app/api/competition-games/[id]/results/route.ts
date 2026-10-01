@@ -7,20 +7,21 @@ type RouteContext = {
   }>;
 };
 
-type ResultInput = {
+type FinalResultInput = {
   position: number;
   teamId: number;
   playerId: number;
 };
 
-const POINTS: Record<number, number> = {
+const FINAL_POINTS: Record<number, number> = {
   1: 50,
   2: 30,
   3: 10,
+  4: 0,
 };
 
 // =====================================================
-// GET RESULTS
+// GET FINAL RESULTS
 // =====================================================
 
 export async function GET(
@@ -30,145 +31,136 @@ export async function GET(
   try {
     const { id } = await context.params;
 
+    console.log(
+      "===================================="
+    );
+
+    console.log(
+      "GET COMPETITION FINAL RESULTS"
+    );
+
+    console.log("RAW ID:", id);
+
     const gameId = Number(id);
 
-    if (!Number.isInteger(gameId) || gameId <= 0) {
+    console.log("PARSED GAME ID:", gameId);
+
+    console.log(
+      "===================================="
+    );
+
+    if (
+      !Number.isInteger(gameId) ||
+      gameId <= 0
+    ) {
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid game ID.",
+          message: `Invalid competition game ID: ${id}`,
         },
         { status: 400 }
       );
     }
 
-    // ---------------------------------------------------
+    // -------------------------------------------------
     // CHECK GAME
-    // ---------------------------------------------------
+    // -------------------------------------------------
 
     const game = await prisma.game.findUnique({
       where: {
         id: gameId,
       },
+      select: {
+        id: true,
+        name: true,
+        sportType: true,
+      },
     });
+
+    console.log("FOUND GAME:", game);
 
     if (!game) {
       return NextResponse.json(
         {
           success: false,
-          error: "Game not found.",
+          message: `Competition game ${gameId} not found.`,
         },
         { status: 404 }
       );
     }
 
-    // ---------------------------------------------------
-    // GET ALL RESULTS
-    // ---------------------------------------------------
+    // -------------------------------------------------
+    // GET ONLY FINAL
     //
-    // IMPORTANT:
+    // Preliminary rounds are NOT stored in DB.
     //
-    // We DO NOT only return one result set.
-    //
-    // The same game can have:
-    //
-    // Round 1
-    // Round 2
-    // Round 3
-    //
-    // Every round earns its own points.
-    // ---------------------------------------------------
+    // Final = round 1
+    // -------------------------------------------------
 
     const results =
       await prisma.competitionGameResult.findMany({
         where: {
           gameId,
+          round: 1,
         },
 
         include: {
-          team: true,
-          player: true,
+          team: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+
+          player: {
+            select: {
+              id: true,
+              name: true,
+              jerseyNo: true,
+            },
+          },
         },
 
-        orderBy: [
-          {
-            round: "asc",
-          },
-          {
-            position: "asc",
-          },
-        ],
+        orderBy: {
+          position: "asc",
+        },
       });
 
-    // ---------------------------------------------------
-    // GROUP RESULTS BY ROUND
-    // ---------------------------------------------------
-
-    const roundsMap = new Map<
-      number,
-      typeof results
-    >();
-
-    for (const result of results) {
-      const existing =
-        roundsMap.get(result.round);
-
-      if (existing) {
-        existing.push(result);
-      } else {
-        roundsMap.set(result.round, [
-          result,
-        ]);
-      }
-    }
-
-    const rounds = Array.from(
-      roundsMap.entries()
-    ).map(
-      ([round, roundResults]) => ({
-        round,
-        results: roundResults,
-        totalPoints: roundResults.reduce(
-          (sum, result) =>
-            sum + result.points,
-          0
-        ),
-      })
+    console.log(
+      "FINAL RESULTS:",
+      results
     );
 
     return NextResponse.json({
       success: true,
-
       game,
-
       results,
-
-      rounds,
     });
   } catch (error) {
     console.error(
-      "GET COMPETITION RESULTS ERROR:",
+      "GET COMPETITION FINAL RESULTS ERROR:",
       error
     );
 
     return NextResponse.json(
       {
         success: false,
-
-        error:
+        message:
           error instanceof Error
             ? error.message
-            : "Failed to load results.",
+            : "Failed to load Final results.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
 
 // =====================================================
-// SAVE RESULTS
+// POST FINAL RESULTS
+// =====================================================
+
+// =====================================================
+// POST FINAL RESULTS
 // =====================================================
 
 export async function POST(
@@ -180,156 +172,180 @@ export async function POST(
 
     const gameId = Number(id);
 
-    if (!Number.isInteger(gameId) || gameId <= 0) {
+    console.log("====================================");
+    console.log("POST COMPETITION FINAL RESULTS");
+    console.log("GAME ID:", gameId);
+
+    // -------------------------------------------------
+    // VALIDATE GAME ID
+    // -------------------------------------------------
+
+    if (
+      !Number.isInteger(gameId) ||
+      gameId <= 0
+    ) {
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid game ID.",
+          message: `Invalid competition game ID: ${id}`,
         },
         { status: 400 }
       );
     }
 
-    // =================================================
-    // READ REQUEST
-    // =================================================
+    // -------------------------------------------------
+    // READ BODY
+    // -------------------------------------------------
 
     const body = await request.json();
 
-    const results: ResultInput[] =
-      Array.isArray(body.results)
-        ? body.results.map(
-            (item: unknown) => {
-              const result =
-                item as Record<
-                  string,
-                  unknown
-                >;
+    console.log(
+      "FINAL RESULT BODY:",
+      body
+    );
 
-              return {
-                position: Number(
-                  result.position
-                ),
-
-                teamId: Number(
-                  result.teamId
-                ),
-
-                playerId: Number(
-                  result.playerId
-                ),
-              };
-            }
-          )
+    const results: FinalResultInput[] =
+      Array.isArray(body?.results)
+        ? body.results.map((item: any) => ({
+            position: Number(item?.position),
+            teamId: Number(item?.teamId),
+            playerId: Number(item?.playerId),
+          }))
         : [];
 
     console.log(
-      "RECEIVED COMPETITION RESULTS:",
+      "PARSED FINAL RESULTS:",
       results
     );
 
-    // =================================================
-    // EXACTLY 3 RESULTS
-    // =================================================
+    // -------------------------------------------------
+    // EXACTLY 4 FINAL PLAYERS
+    // -------------------------------------------------
 
-    if (results.length !== 3) {
+    if (results.length !== 4) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Exactly 3 results are required.",
+          message:
+            "Exactly 4 Final players are required.",
         },
         { status: 400 }
       );
     }
 
-    // =================================================
-    // VALIDATE BASIC VALUES
-    // =================================================
-
-    for (const result of results) {
-      if (
-        !Number.isInteger(
-          result.position
-        ) ||
-        result.position < 1 ||
-        result.position > 3
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "Each result must have a valid position: 1, 2 or 3.",
-          },
-          { status: 400 }
-        );
-      }
-
-      if (
-        !Number.isInteger(
-          result.teamId
-        ) ||
-        result.teamId <= 0
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Invalid team.",
-          },
-          { status: 400 }
-        );
-      }
-
-      if (
-        !Number.isInteger(
-          result.playerId
-        ) ||
-        result.playerId <= 0
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Invalid player.",
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    // =================================================
+    // -------------------------------------------------
     // VALIDATE POSITIONS
-    // =================================================
+    // -------------------------------------------------
 
     const positions = results.map(
       (result) => result.position
     );
 
+    const expectedPositions = [1, 2, 3, 4];
+
     const uniquePositions =
       new Set(positions);
 
-    if (
-      uniquePositions.size !== 3 ||
-      !uniquePositions.has(1) ||
-      !uniquePositions.has(2) ||
-      !uniquePositions.has(3)
-    ) {
+    if (uniquePositions.size !== 4) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Results must contain 1st, 2nd and 3rd place.",
+          message:
+            "Each Final position must be unique.",
         },
         { status: 400 }
       );
     }
 
-    // =================================================
-    // GET GAME
-    // =================================================
+    for (const position of expectedPositions) {
+      if (!uniquePositions.has(position)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Final positions must be exactly 1st, 2nd, 3rd and 4th.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // -------------------------------------------------
+    // VALIDATE TEAM IDS
+    // -------------------------------------------------
+
+    for (const result of results) {
+      if (
+        !Number.isInteger(result.teamId) ||
+        result.teamId <= 0
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Every Final player must have a valid team.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // -------------------------------------------------
+    // VALIDATE PLAYER IDS
+    // -------------------------------------------------
+
+    for (const result of results) {
+      if (
+        !Number.isInteger(result.playerId) ||
+        result.playerId <= 0
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Every Final result must have a valid player.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // -------------------------------------------------
+    // SAME PLAYER CHECK
+    //
+    // Same player cannot appear twice.
+    // -------------------------------------------------
+
+    const playerIds = results.map(
+      (result) => result.playerId
+    );
+
+    if (
+      new Set(playerIds).size !== 4
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "The same player cannot appear twice in the Final.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // -------------------------------------------------
+    // CHECK GAME
+    // -------------------------------------------------
 
     const game = await prisma.game.findUnique({
       where: {
         id: gameId,
+      },
+
+      select: {
+        id: true,
+        name: true,
+        sportType: true,
       },
     });
 
@@ -337,15 +353,34 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: "Game not found.",
+          message:
+            `Competition game ${gameId} not found.`,
         },
         { status: 404 }
       );
     }
 
-    // =================================================
+    // -------------------------------------------------
     // GET PARTICIPATING TEAMS
-    // =================================================
+    //
+    // If explicit participation records exist,
+    // use them.
+    //
+    // If there are no participation records and
+    // the game has exactly 4 teams, use those 4 teams.
+    //
+    // IMPORTANT:
+    // We DO NOT require 4 DIFFERENT finalist teams.
+    //
+    // Example:
+    //
+    // Player A -> Team 1
+    // Player B -> Team 1
+    // Player C -> Team 2
+    // Player D -> Team 3
+    //
+    // This is VALID.
+    // -------------------------------------------------
 
     const participations =
       await prisma.competitionGameParticipation.findMany(
@@ -353,121 +388,185 @@ export async function POST(
           where: {
             gameId,
           },
+
+          select: {
+            teamId: true,
+          },
         }
       );
 
-    if (participations.length !== 4) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Please select 4 participating teams first.",
-        },
-        { status: 400 }
-      );
-    }
+    let participatingTeamIds: Set<number>;
 
-    const participatingTeamIds =
-      new Set(
+    // -------------------------------------------------
+    // CASE 1:
+    // Explicit participation records exist
+    // -------------------------------------------------
+
+    if (participations.length > 0) {
+      participatingTeamIds = new Set(
         participations.map(
           (item) => item.teamId
         )
       );
 
-    // =================================================
-    // VALIDATE RESULT TEAMS
-    // =================================================
+      // The participation table should contain
+      // exactly 4 unique teams.
+      if (
+        participatingTeamIds.size !== 4
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "The game must have exactly 4 participating teams.",
+          },
+          { status: 400 }
+        );
+      }
+    }
 
-    const teamIds = results.map(
-      (result) => result.teamId
-    );
+    // -------------------------------------------------
+    // CASE 2:
+    // No participation records
+    //
+    // Use the game's teams if exactly 4 exist.
+    // -------------------------------------------------
 
-    // Same team cannot occupy multiple
-    // positions in the same round.
+    else {
+      const gameTeams =
+        await prisma.team.findMany({
+          where: {
+            // Get teams that actually have players
+            players: {
+              some: {},
+            },
+          },
 
-    if (new Set(teamIds).size !== 3) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "The same team cannot occupy multiple places.",
-        },
-        { status: 400 }
+          select: {
+            id: true,
+          },
+
+          orderBy: {
+            id: "asc",
+          },
+        });
+
+      if (gameTeams.length !== 4) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Exactly 4 teams must be available for this game before saving the Final.",
+          },
+          { status: 400 }
+        );
+      }
+
+      participatingTeamIds = new Set(
+        gameTeams.map(
+          (team) => team.id
+        )
       );
     }
 
-    for (const teamId of teamIds) {
+    console.log(
+      "PARTICIPATING TEAM IDS:",
+      [...participatingTeamIds]
+    );
+
+    // -------------------------------------------------
+    // VALIDATE FINAL TEAM MEMBERSHIP
+    //
+    // Team IDs may repeat.
+    // -------------------------------------------------
+
+    for (const result of results) {
       if (
         !participatingTeamIds.has(
-          teamId
+          result.teamId
         )
       ) {
         return NextResponse.json(
           {
             success: false,
-            error:
-              "Result team must be one of the 4 participating teams.",
+            message:
+              "Every Final player must belong to one of the participating teams.",
           },
           { status: 400 }
         );
       }
     }
 
-    // =================================================
-    // VALIDATE PLAYERS
-    // =================================================
+    /*
+     * IMPORTANT:
+     *
+     * DO NOT check:
+     *
+     * new Set(results.map(r => r.teamId)).size === 4
+     *
+     * because multiple players from the same
+     * team are allowed in the Final.
+     */
 
-    const playerIds = results.map(
-      (result) => result.playerId
-    );
+    // -------------------------------------------------
+    // GET PLAYERS
+    // -------------------------------------------------
 
-    // Same player cannot occupy multiple
-    // positions in the same round.
+    const players =
+      await prisma.player.findMany({
+        where: {
+          id: {
+            in: playerIds,
+          },
+        },
 
-    if (
-      new Set(playerIds).size !== 3
-    ) {
+        select: {
+          id: true,
+          name: true,
+          teamId: true,
+          jerseyNo: true,
+        },
+      });
+
+    if (players.length !== 4) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "The same player cannot occupy multiple positions.",
+          message:
+            "One or more selected Final players were not found.",
         },
         { status: 400 }
       );
     }
 
+    // -------------------------------------------------
+    // PLAYER MUST BELONG TO SELECTED TEAM
+    // -------------------------------------------------
+
     for (const result of results) {
-      const player =
-        await prisma.player.findUnique({
-          where: {
-            id: result.playerId,
-          },
-        });
+      const player = players.find(
+        (item) =>
+          item.id === result.playerId
+      );
 
       if (!player) {
         return NextResponse.json(
           {
             success: false,
-            error:
-              `Player with ID ${result.playerId} does not exist.`,
+            message:
+              `Player ${result.playerId} was not found.`,
           },
           { status: 400 }
         );
       }
 
-      // -------------------------------------------------
-      // PLAYER MUST BELONG TO TEAM
-      // -------------------------------------------------
-
       if (
-        player.teamId !==
-        result.teamId
+        player.teamId !== result.teamId
       ) {
         return NextResponse.json(
           {
             success: false,
-            error:
+            message:
               `${player.name} does not belong to the selected team.`,
           },
           { status: 400 }
@@ -475,175 +574,134 @@ export async function POST(
       }
     }
 
-    // =================================================
-    // FIND NEXT ROUND
-    // =================================================
-    //
-    // IMPORTANT:
-    //
-    // DO NOT DELETE PREVIOUS RESULTS.
-    //
-    // Example:
-    //
-    // Game 5
-    //
-    // Round 1:
-    // Alpha 1st = 50
-    // Beta  2nd = 30
-    // Gamma 3rd = 10
-    //
-    // Round 2:
-    // Beta  1st = 50
-    // Alpha 2nd = 30
-    // GC    3rd = 10
-    //
-    // Both rounds remain in DB.
-    // =================================================
+    // -------------------------------------------------
+    // CHECK IF FINAL ALREADY EXISTS
+    // -------------------------------------------------
 
-    const lastResult =
+    const existingFinal =
       await prisma.competitionGameResult.findFirst(
         {
           where: {
             gameId,
-          },
-
-          orderBy: {
-            round: "desc",
+            round: 1,
           },
 
           select: {
-            round: true,
+            id: true,
           },
         }
       );
 
-    const nextRound = lastResult
-      ? lastResult.round + 1
-      : 1;
+    if (existingFinal) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Final results have already been saved for this game.",
+        },
+        { status: 409 }
+      );
+    }
 
-    console.log(
-      `Saving competition game ${gameId}, round ${nextRound}`
-    );
-
-    // =================================================
-    // SAVE NEW ROUND
-    // =================================================
-
-    await prisma.$transaction(
-      async (tx) => {
-        await tx.competitionGameResult.createMany(
-          {
-            data: results.map(
-              (result) => ({
-                gameId,
-
-                teamId:
-                  result.teamId,
-
-                playerId:
-                  result.playerId,
-
-                round: nextRound,
-
-                position:
-                  result.position,
-
-                points:
-                  POINTS[
-                    result.position
-                  ],
-              })
-            ),
-          }
-        );
-      }
-    );
-
-    // =================================================
-    // GET SAVED ROUND
-    // =================================================
+    // -------------------------------------------------
+    // SAVE FINAL
+    // -------------------------------------------------
 
     const savedResults =
-      await prisma.competitionGameResult.findMany(
-        {
-          where: {
-            gameId,
-            round: nextRound,
-          },
+      await prisma.$transaction(
+        async (tx) => {
+          await tx.competitionGameResult.createMany(
+            {
+              data: results.map(
+                (result) => ({
+                  gameId,
 
-          include: {
-            team: true,
-            player: true,
-          },
+                  teamId:
+                    result.teamId,
 
-          orderBy: {
-            position: "asc",
-          },
+                  playerId:
+                    result.playerId,
+
+                  // Final is stored as round 1
+                  round: 1,
+
+                  position:
+                    result.position,
+
+                  points:
+                    FINAL_POINTS[
+                      result.position
+                    ],
+                })
+              ),
+            }
+          );
+
+          return tx.competitionGameResult.findMany(
+            {
+              where: {
+                gameId,
+                round: 1,
+              },
+
+              include: {
+                team: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+
+                player: {
+                  select: {
+                    id: true,
+                    name: true,
+                    jerseyNo: true,
+                  },
+                },
+              },
+
+              orderBy: {
+                position: "asc",
+              },
+            }
+          );
         }
       );
 
-    // =================================================
-    // GET ALL GAME RESULTS
-    // =================================================
+    console.log(
+      "FINAL SAVED:",
+      savedResults
+    );
 
-    const allResults =
-      await prisma.competitionGameResult.findMany(
-        {
-          where: {
-            gameId,
-          },
+    return NextResponse.json(
+      {
+        success: true,
 
-          include: {
-            team: true,
-            player: true,
-          },
+        message:
+          "Final results saved successfully.",
 
-          orderBy: [
-            {
-              round: "asc",
-            },
-            {
-              position: "asc",
-            },
-          ],
-        }
-      );
+        game,
 
-    // =================================================
-    // RETURN
-    // =================================================
-
-    return NextResponse.json({
-      success: true,
-
-      message: `Round ${nextRound} saved successfully.`,
-
-      game,
-
-      round: nextRound,
-
-      results: savedResults,
-
-      allResults,
-    });
+        results: savedResults,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error(
-      "SAVE COMPETITION RESULTS ERROR:",
+      "POST COMPETITION FINAL RESULTS ERROR:",
       error
     );
 
     return NextResponse.json(
       {
         success: false,
-
-        error:
+        message:
           error instanceof Error
             ? error.message
-            : "Failed to save competition results.",
+            : "Failed to save Final results.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
