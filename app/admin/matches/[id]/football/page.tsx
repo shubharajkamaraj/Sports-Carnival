@@ -1340,42 +1340,28 @@ export default function FootballMatchPage() {
                   Penalty Result
                 </label>
 
-                <select
-                  value={
-                    penaltyResult
-                  }
-                  onChange={(e) =>
-                    setPenaltyResult(
-                      e.target.value as
-                        | FootballPenaltyResult
-                        | ""
-                    )
-                  }
-                  disabled={
-                    saving ||
-                    matchCompleted
-                  }
-                  className="w-full border rounded-lg px-3 py-2 bg-white disabled:bg-gray-100"
-                >
+         <select
+  value={penaltyResult}
+  onChange={(e) =>
+    setPenaltyResult(
+      e.target.value as FootballPenaltyResult | ""
+    )
+  }
+  disabled={saving || matchCompleted}
+  className="w-full border rounded-lg px-3 py-2 bg-white text-black disabled:bg-gray-100"
+>
+  <option value="" className="bg-white text-black">
+    Select result
+  </option>
 
-                  <option value="">
-                    Select result
-                  </option>
+  <option value="GOAL" className="bg-white text-black">
+    Scored
+  </option>
 
-                  {/* IMPORTANT:
-                      Backend value = GOAL
-                      Display text = Scored
-                  */}
-
-                  <option value="GOAL">
-                    Scored
-                  </option>
-
-                  <option value="MISSED">
-                    Missed
-                  </option>
-
-                </select>
+  <option value="MISSED" className="bg-white text-black">
+    Missed
+  </option>
+</select>
 
                 <p className="mt-1 text-xs text-gray-400">
                   A scored penalty increases the match score. A missed penalty does not.
