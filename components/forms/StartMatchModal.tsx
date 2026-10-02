@@ -1340,46 +1340,30 @@ export default function StartMatchModal({
 
           {/* BATTING TEAM */}
 
-          <div>
+    <div>
+  <label className="mb-2 block text-sm font-semibold text-slate-700">
+    Batting First
+  </label>
 
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-              Batting First
-            </label>
+  <select
+    value={battingTeamId}
+    onChange={(e) => setBattingTeamId(e.target.value)}
+    disabled={loading}
+    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-black outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+  >
+    <option value="" className="text-black">
+      Select Batting Team
+    </option>
 
-            <select
-              value={battingTeamId}
-              onChange={(e) =>
-                setBattingTeamId(
-                  e.target.value
-                )
-              }
-              disabled={loading}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-            >
+    <option value={match.team1Id} className="text-black">
+      {match.team1.name}
+    </option>
 
-              <option value="">
-                Select Batting Team
-              </option>
-
-              <option
-                value={
-                  match.team1Id
-                }
-              >
-                {match.team1.name}
-              </option>
-
-              <option
-                value={
-                  match.team2Id
-                }
-              >
-                {match.team2.name}
-              </option>
-
-            </select>
-
-          </div>
+    <option value={match.team2Id} className="text-black">
+      {match.team2.name}
+    </option>
+  </select>
+</div>
 
           {/* TEAM PREVIEW */}
 

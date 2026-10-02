@@ -25,25 +25,27 @@ export async function POST(
     const matchId = Number(id);
     const inningsId = Number(inningsIdParam);
 
-    if (!Number.isInteger(matchId) || matchId <= 0) {
+    if (
+      !Number.isInteger(matchId) ||
+      matchId <= 0
+    ) {
       return NextResponse.json(
         {
           error: "Invalid match ID.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    if (!Number.isInteger(inningsId) || inningsId <= 0) {
+    if (
+      !Number.isInteger(inningsId) ||
+      inningsId <= 0
+    ) {
       return NextResponse.json(
         {
           error: "Invalid innings ID.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -53,15 +55,29 @@ export async function POST(
 
     const body = await req.json();
 
-    const strikerId = Number(body.strikerId);
-    const nonStrikerId = Number(body.nonStrikerId);
-    const bowlerId = Number(body.bowlerId);
+    const strikerId = Number(
+      body.strikerId
+    );
 
-    const runsOffBat = Number(body.runsOffBat ?? 0);
-    const extraRuns = Number(body.extraRuns ?? 0);
+    const nonStrikerId = Number(
+      body.nonStrikerId
+    );
+
+    const bowlerId = Number(
+      body.bowlerId
+    );
+
+    const runsOffBat = Number(
+      body.runsOffBat ?? 0
+    );
+
+    const extraRuns = Number(
+      body.extraRuns ?? 0
+    );
 
     const totalRuns = Number(
-      body.totalRuns ?? runsOffBat + extraRuns
+      body.totalRuns ??
+        runsOffBat + extraRuns
     );
 
     const extraType = String(
@@ -74,13 +90,18 @@ export async function POST(
     const isWicket =
       body.isWicket === true;
 
-    const dismissalType = body.dismissalType
-      ? String(body.dismissalType).toUpperCase()
-      : null;
+    const dismissalType =
+      body.dismissalType
+        ? String(
+            body.dismissalType
+          ).toUpperCase()
+        : null;
 
     const dismissedPlayerId =
       body.dismissedPlayerId
-        ? Number(body.dismissedPlayerId)
+        ? Number(
+            body.dismissedPlayerId
+          )
         : null;
 
     const fielderId =
@@ -105,21 +126,33 @@ export async function POST(
           error:
             "Striker, non-striker and bowler are required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    if (strikerId === nonStrikerId) {
+    if (
+      strikerId === nonStrikerId
+    ) {
       return NextResponse.json(
         {
           error:
             "Striker and non-striker must be different.",
         },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !Number.isInteger(runsOffBat) ||
+      !Number.isInteger(extraRuns) ||
+      !Number.isInteger(totalRuns)
+    ) {
+      return NextResponse.json(
         {
-          status: 400,
-        }
+          error:
+            "Runs must be whole numbers.",
+        },
+        { status: 400 }
       );
     }
 
@@ -130,12 +163,106 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          error: "Runs cannot be negative.",
+          error:
+            "Runs cannot be negative.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
+    }
+
+    // =====================================================
+    // TOTAL RUN VALIDATION
+    // =====================================================
+
+    if (
+      totalRuns !==
+      runsOffBat + extraRuns
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Total runs must equal bat runs plus extra runs.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // =====================================================
+    // WICKET VALIDATION
+    // =====================================================
+
+    if (isWicket) {
+      if (!dismissalType) {
+        return NextResponse.json(
+          {
+            error:
+              "Dismissal type is required.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!dismissedPlayerId) {
+        return NextResponse.json(
+          {
+            error:
+              "Dismissed player is required.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (
+        dismissedPlayerId !==
+          strikerId &&
+        dismissedPlayerId !==
+          nonStrikerId
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Dismissed player must be striker or non-striker.",
+          },
+          { status: 400 }
+        );
+      }
+
+      // ---------------------------------------------------
+      // RUNS + WICKET
+      //
+      // Only RUN OUT is allowed to have bat runs
+      // in this implementation.
+      // ---------------------------------------------------
+
+      if (
+        runsOffBat > 0 &&
+        dismissalType !== "RUN_OUT"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Runs with a wicket are supported only for RUN OUT.",
+          },
+          { status: 400 }
+        );
+      }
+
+      // ---------------------------------------------------
+      // RUN OUT MUST BE LEGAL
+      // ---------------------------------------------------
+
+      if (
+        dismissalType === "RUN_OUT" &&
+        !isLegalDelivery
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Run out must be recorded on a legal delivery.",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // =====================================================
@@ -190,9 +317,7 @@ export async function POST(
         {
           error: "Match not found.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
@@ -200,34 +325,35 @@ export async function POST(
     // MATCH MUST BE LIVE
     // =====================================================
 
-    if (match.status !== "LIVE") {
+    if (
+      match.status !== "LIVE"
+    ) {
       return NextResponse.json(
         {
-          error: "This match is not live.",
+          error:
+            "This match is not live.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     // =====================================================
-    // FIND CURRENT INNINGS
+    // FIND INNINGS
     // =====================================================
 
     const innings =
       match.cricketInnings.find(
-        (item) => item.id === inningsId
+        (item) =>
+          item.id === inningsId
       );
 
     if (!innings) {
       return NextResponse.json(
         {
-          error: "Cricket innings not found.",
+          error:
+            "Cricket innings not found.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
@@ -241,11 +367,10 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          error: "Invalid innings number.",
+          error:
+            "Invalid innings number.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -266,9 +391,7 @@ export async function POST(
           error:
             "Match overs are not configured correctly.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -276,7 +399,7 @@ export async function POST(
       maxOvers * 6;
 
     // =====================================================
-    // CHECK CURRENT INNINGS ALREADY COMPLETE
+    // CURRENT INNINGS COMPLETE
     // =====================================================
 
     if (
@@ -285,7 +408,8 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          error: `Innings ${innings.inningsNumber} is already completed.`,
+          error:
+            `Innings ${innings.inningsNumber} is already completed.`,
 
           inningsCompleted: true,
 
@@ -296,28 +420,26 @@ export async function POST(
             innings.inningsNumber === 1
               ? match.cricketInnings.find(
                   (item) =>
-                    item.inningsNumber === 2
+                    item.inningsNumber ===
+                    2
                 ) ?? null
               : null,
 
           matchCompleted:
             innings.inningsNumber === 2,
 
-          // IMPORTANT
           legalBalls:
             innings.legalBalls,
 
           ballCount:
             innings.legalBalls % 6,
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     // =====================================================
-    // VALIDATE BATTING PLAYERS
+    // TEAM PLAYERS
     // =====================================================
 
     const battingPlayerIds =
@@ -340,9 +462,7 @@ export async function POST(
           error:
             "Striker does not belong to the batting team.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -356,9 +476,7 @@ export async function POST(
           error:
             "Non-striker does not belong to the batting team.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -372,41 +490,46 @@ export async function POST(
           error:
             "Bowler does not belong to the bowling team.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     // =====================================================
-    // WICKET VALIDATION
+    // FIELDER VALIDATION
     // =====================================================
 
-    if (isWicket) {
-      if (!dismissedPlayerId) {
+    if (
+      isWicket &&
+      (
+        dismissalType ===
+          "CAUGHT" ||
+        dismissalType ===
+          "RUN_OUT" ||
+        dismissalType ===
+          "STUMPED"
+      )
+    ) {
+      if (!fielderId) {
         return NextResponse.json(
           {
             error:
-              "Dismissed player is required.",
+              "Fielder is required for this dismissal.",
           },
-          {
-            status: 400,
-          }
+          { status: 400 }
         );
       }
 
       if (
-        dismissedPlayerId !== strikerId &&
-        dismissedPlayerId !== nonStrikerId
+        !bowlingPlayerIds.includes(
+          fielderId
+        )
       ) {
         return NextResponse.json(
           {
             error:
-              "Dismissed player must be striker or non-striker.",
+              "Fielder must belong to the bowling team.",
           },
-          {
-            status: 400,
-          }
+          { status: 400 }
         );
       }
     }
@@ -437,9 +560,9 @@ export async function POST(
     const result =
       await prisma.$transaction(
         async (tx) => {
-          // =================================================
+          // ===============================================
           // CREATE BALL
-          // =================================================
+          // ===============================================
 
           const ball =
             await tx.cricketBallEvent.create({
@@ -478,9 +601,9 @@ export async function POST(
               },
             });
 
-          // =================================================
+          // ===============================================
           // NEW INNINGS VALUES
-          // =================================================
+          // ===============================================
 
           const newTotalRuns =
             innings.totalRuns +
@@ -496,30 +619,20 @@ export async function POST(
               ? 1
               : 0);
 
-          // =================================================
-          // IMPORTANT: BALL COUNT
-          // =================================================
-          //
-          // This is the number of legal balls in the
-          // current over AFTER this delivery.
-          //
-          // Example:
-          // 1,2,3,4,5,6 => 6
-          //
-          // Wide/no-ball does not increase it.
-          //
+          // ===============================================
+          // OVER
+          // ===============================================
 
           const currentOverBallCount =
             newLegalBalls % 6;
 
-          // If exactly 6, this is the end of an over.
           const isEndOfOver =
             isLegalDelivery &&
             currentOverBallCount === 0;
 
-          // =================================================
+          // ===============================================
           // ALL OUT
-          // =================================================
+          // ===============================================
 
           const numberOfBatters =
             innings.battingTeam
@@ -535,23 +648,27 @@ export async function POST(
             newTotalWickets >=
             wicketsRequiredForAllOut;
 
-          // =================================================
+          // ===============================================
           // OVERS COMPLETED
-          // =================================================
+          // ===============================================
 
           const oversCompleted =
             newLegalBalls >=
             maximumLegalBalls;
 
-          // =================================================
-          // TARGET CHECK
-          // =================================================
+          // ===============================================
+          // TARGET
+          // ===============================================
 
           let targetChased = false;
-          let target: number | null = null;
 
-          let innings1 =
-            null;
+          let target:
+            | number
+            | null = null;
+
+          let innings1:
+            | (typeof match.cricketInnings)[number]
+            | null = null;
 
           if (
             innings.inningsNumber === 2
@@ -559,29 +676,11 @@ export async function POST(
             innings1 =
               match.cricketInnings.find(
                 (item) =>
-                  item.inningsNumber === 1
+                  item.inningsNumber ===
+                  1
               ) ?? null;
 
             if (innings1) {
-              console.log(
-                "========== TARGET DEBUG =========="
-              );
-
-              console.log(
-                "INNINGS 1 ID:",
-                innings1.id
-              );
-
-              console.log(
-                "INNINGS 1 RUNS:",
-                innings1.totalRuns
-              );
-
-              console.log(
-                "INNINGS 2 RUNS:",
-                newTotalRuns
-              );
-
               target =
                 innings1.totalRuns + 1;
 
@@ -591,18 +690,18 @@ export async function POST(
             }
           }
 
-          // =================================================
+          // ===============================================
           // INNINGS COMPLETED
-          // =================================================
+          // ===============================================
 
           const inningsCompleted =
             allOut ||
             oversCompleted ||
             targetChased;
 
-          // =================================================
+          // ===============================================
           // UPDATE INNINGS
-          // =================================================
+          // ===============================================
 
           const updatedInnings =
             await tx.cricketInnings.update({
@@ -622,9 +721,9 @@ export async function POST(
               },
             });
 
-          // =================================================
+          // ===============================================
           // INNINGS STILL RUNNING
-          // =================================================
+          // ===============================================
 
           if (!inningsCompleted) {
             return {
@@ -649,7 +748,6 @@ export async function POST(
 
               target,
 
-              // IMPORTANT
               legalBalls:
                 newLegalBalls,
 
@@ -660,9 +758,9 @@ export async function POST(
             };
           }
 
-          // =================================================
-          // INNINGS 1 COMPLETED
-          // =================================================
+          // ===============================================
+          // INNINGS 1 COMPLETE
+          // ===============================================
 
           if (
             innings.inningsNumber === 1
@@ -670,12 +768,13 @@ export async function POST(
             let innings2 =
               match.cricketInnings.find(
                 (item) =>
-                  item.inningsNumber === 2
+                  item.inningsNumber ===
+                  2
               );
 
-            // -----------------------------------------------
+            // =============================================
             // CREATE INNINGS 2
-            // -----------------------------------------------
+            // =============================================
 
             if (!innings2) {
               const createdInnings2 =
@@ -683,8 +782,7 @@ export async function POST(
                   data: {
                     matchId,
 
-                    inningsNumber:
-                      2,
+                    inningsNumber: 2,
 
                     battingTeamId:
                       innings.bowlingTeamId,
@@ -704,9 +802,9 @@ export async function POST(
                 createdInnings2 as any;
             }
 
-            // -----------------------------------------------
+            // =============================================
             // RETURN INNINGS 2
-            // -----------------------------------------------
+            // =============================================
 
             return {
               ball,
@@ -752,7 +850,6 @@ export async function POST(
 
               target,
 
-              // IMPORTANT
               legalBalls:
                 newLegalBalls,
 
@@ -763,25 +860,27 @@ export async function POST(
             };
           }
 
-          // =================================================
-          // INNINGS 2 COMPLETED
-          // =================================================
+          // ===============================================
+          // INNINGS 2 COMPLETE
+          // ===============================================
 
           const team1Score =
             innings.battingTeamId ===
             match.team1Id
               ? newTotalRuns
-              : innings1?.totalRuns ?? 0;
+              : innings1?.totalRuns ??
+                0;
 
           const team2Score =
             innings.battingTeamId ===
             match.team2Id
               ? newTotalRuns
-              : innings1?.totalRuns ?? 0;
+              : innings1?.totalRuns ??
+                0;
 
-          // =================================================
-          // DETERMINE WINNER
-          // =================================================
+          // ===============================================
+          // RESULT
+          // ===============================================
 
           let winnerTeamId:
             | number
@@ -794,10 +893,6 @@ export async function POST(
             | "TIE"
             | "NO_RESULT";
 
-          // =================================================
-          // TARGET CHASED
-          // =================================================
-
           if (targetChased) {
             winnerTeamId =
               innings.battingTeamId;
@@ -807,15 +902,10 @@ export async function POST(
               match.team1Id
                 ? "TEAM1_WIN"
                 : "TEAM2_WIN";
-          }
-
-          // =================================================
-          // INNINGS 2 FINISHED WITHOUT CHASING
-          // =================================================
-
-          else if (
+          } else if (
             newTotalRuns >
-            (innings1?.totalRuns ?? 0)
+            (innings1?.totalRuns ??
+              0)
           ) {
             winnerTeamId =
               innings.battingTeamId;
@@ -825,35 +915,29 @@ export async function POST(
               match.team1Id
                 ? "TEAM1_WIN"
                 : "TEAM2_WIN";
-          }
-
-          // =================================================
-          // TIE
-          // =================================================
-
-          else if (
+          } else if (
             newTotalRuns ===
-            (innings1?.totalRuns ?? 0)
+            (innings1?.totalRuns ??
+              0)
           ) {
-            // winnerTeamId = null;
+            /*
+             * Keeping your existing application
+             * behaviour:
+             *
+             * The team that batted first
+             * is declared the winner.
+             */
 
-            // matchResult = "TIE";
+            winnerTeamId =
+              innings1?.battingTeamId ??
+              null;
 
-             // The team that batted first is the winner
-  winnerTeamId =
-    innings1?.battingTeamId ?? null;
-
-  matchResult =
-    winnerTeamId === match.team1Id
-      ? "TEAM1_WIN"
-      : "TEAM2_WIN";
-          }
-
-          // =================================================
-          // FIRST INNINGS TEAM WINS
-          // =================================================
-
-          else {
+            matchResult =
+              winnerTeamId ===
+              match.team1Id
+                ? "TEAM1_WIN"
+                : "TEAM2_WIN";
+          } else {
             winnerTeamId =
               innings.bowlingTeamId;
 
@@ -864,9 +948,9 @@ export async function POST(
                 : "TEAM2_WIN";
           }
 
-          // =================================================
-          // MATCH COMPLETED
-          // =================================================
+          // ===============================================
+          // COMPLETE MATCH
+          // ===============================================
 
           await tx.match.update({
             where: {
@@ -874,11 +958,9 @@ export async function POST(
             },
 
             data: {
-              status:
-                "COMPLETED",
+              status: "COMPLETED",
 
-              result:
-                matchResult,
+              result: matchResult,
 
               winnerTeamId,
 
@@ -888,17 +970,16 @@ export async function POST(
             },
           });
 
-          // =================================================
+          // ===============================================
           // FINAL RESPONSE
-          // =================================================
+          // ===============================================
 
           return {
             ball,
 
             updatedInnings,
 
-            inningsCompleted:
-              true,
+            inningsCompleted: true,
 
             completionReason:
               targetChased
@@ -907,11 +988,9 @@ export async function POST(
                   ? "ALL_OUT"
                   : "OVERS_COMPLETED",
 
-            nextInnings:
-              null,
+            nextInnings: null,
 
-            matchCompleted:
-              true,
+            matchCompleted: true,
 
             targetChased,
 
@@ -919,14 +998,12 @@ export async function POST(
 
             winnerTeamId,
 
-            result:
-              matchResult,
+            result: matchResult,
 
             team1Score,
 
             team2Score,
 
-            // IMPORTANT
             legalBalls:
               newLegalBalls,
 
@@ -945,12 +1022,9 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-
         ...result,
       },
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   } catch (error) {
     console.error(
@@ -965,9 +1039,7 @@ export async function POST(
             ? error.message
             : "Failed to save cricket ball.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

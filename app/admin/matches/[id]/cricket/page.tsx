@@ -274,6 +274,9 @@ export default function CricketScoringPage() {
     const [noBallMode, setNoBallMode] = useState(false);
     const [noBallActive, setNoBallActive] = useState(false);
 const [undoing, setUndoing] = useState(false);
+const [wicketRuns, setWicketRuns] = useState(0);
+
+const [runOutCrossed, setRunOutCrossed] =useState(true);
 
   /*
    * =====================================================
@@ -3909,193 +3912,254 @@ async function addBall(
    * =====================================================
    */
 
-  async function addWicket() {
-    if (!innings) {
-      return;
-    }
+async function addWicket() {
+  if (!innings) {
+    return;
+  }
 
-    if (!strikerId) {
-      toast.error(
-        "Select striker."
+  // =====================================================
+  // VALIDATION
+  // =====================================================
+
+  if (!strikerId) {
+    toast.error("Select striker.");
+    return;
+  }
+
+  if (!nonStrikerId) {
+    toast.error("Select non-striker.");
+    return;
+  }
+
+  if (!bowlerId) {
+    toast.error("Select bowler.");
+    return;
+  }
+
+  if (!dismissalType) {
+    toast.error("Select dismissal type.");
+    return;
+  }
+
+  if (!dismissedPlayerId) {
+    toast.error("Select dismissed player.");
+    return;
+  }
+
+  // =====================================================
+  // FIELDER REQUIRED
+  // =====================================================
+
+  if (
+    (
+      dismissalType === "CAUGHT" ||
+      dismissalType === "RUN_OUT" ||
+      dismissalType === "STUMPED"
+    ) &&
+    !fielderId
+  ) {
+    toast.error("Select fielder.");
+    return;
+  }
+
+  // =====================================================
+  // RUN OUT
+  // =====================================================
+  //
+  // For RUN OUT:
+  //
+  // The scorer selects:
+  //
+  // 1. Runs completed
+  // 2. Dismissed batter
+  // 3. Whether the batters crossed
+  //
+  // This is important because:
+  //
+  // RUN OUT + 1 + crossed
+  //
+  // and
+  //
+  // RUN OUT + 1 + not crossed
+  //
+  // can result in different batter positions.
+  //
+  // =====================================================
+
+  if (
+    dismissalType === "RUN_OUT" &&
+    wicketRuns > 0 &&
+    typeof runOutCrossed !== "boolean"
+  ) {
+    toast.error(
+      "Select whether the batters crossed."
+    );
+
+    return;
+  }
+
+  try {
+    setSaving(true);
+
+    // ===================================================
+    // DELIVERY RUNS
+    // ===================================================
+
+    const runsOffBat = wicketRuns;
+
+    const extraRuns = 0;
+
+    const totalRuns =
+      runsOffBat + extraRuns;
+
+    // ===================================================
+    // LEGAL DELIVERY
+    // ===================================================
+
+    const currentLegalBalls =
+      innings.legalBalls;
+
+    const newLegalBalls =
+      currentLegalBalls + 1;
+
+    const overCompleted =
+      newLegalBalls > 0 &&
+      newLegalBalls % 6 === 0;
+
+    // ===================================================
+    // DEBUG
+    // ===================================================
+
+    console.log(
+      "========== WICKET DELIVERY =========="
+    );
+
+    console.log({
+      strikerId,
+      nonStrikerId,
+      bowlerId,
+
+      dismissedPlayerId,
+
+      dismissalType,
+
+      wicketRuns,
+
+      runsOffBat,
+      extraRuns,
+      totalRuns,
+
+      runOutCrossed,
+
+      currentLegalBalls,
+      newLegalBalls,
+      overCompleted,
+    });
+
+    console.log(
+      "======================================"
+    );
+
+    // ===================================================
+    // SAVE BALL
+    // ===================================================
+
+    const res =
+      await fetch(
+        `/api/matches/${matchId}/cricket/innings/${innings.id}/balls`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            strikerId:
+              Number(strikerId),
+
+            nonStrikerId:
+              Number(nonStrikerId),
+
+            bowlerId:
+              Number(bowlerId),
+
+            runsOffBat,
+
+            extraRuns,
+
+            totalRuns,
+
+            extraType: "NONE",
+
+            isLegalDelivery: true,
+
+            isWicket: true,
+
+            dismissalType,
+
+            dismissedPlayerId:
+              Number(dismissedPlayerId),
+
+            fielderId: fielderId
+              ? Number(fielderId)
+              : null,
+          }),
+        }
       );
 
-      return;
-    }
+    // ===================================================
+    // READ RESPONSE
+    // ===================================================
 
-    if (!nonStrikerId) {
-      toast.error(
-        "Select non-striker."
-      );
+    const responseText =
+      await res.text();
 
-      return;
-    }
-
-    if (!bowlerId) {
-      toast.error(
-        "Select bowler."
-      );
-
-      return;
-    }
-
-    if (!dismissalType) {
-      toast.error(
-        "Select dismissal type."
-      );
-
-      return;
-    }
-
-    if (!dismissedPlayerId) {
-      toast.error(
-        "Select dismissed player."
-      );
-
-      return;
-    }
-
-    if (
-      (
-        dismissalType ===
-          "CAUGHT" ||
-        dismissalType ===
-          "RUN_OUT" ||
-        dismissalType ===
-          "STUMPED"
-      ) &&
-      !fielderId
-    ) {
-      toast.error(
-        "Select fielder."
-      );
-
-      return;
-    }
+    let data:
+      | BallResponse
+      | {
+          error?: string;
+        } = {};
 
     try {
-      setSaving(true);
+      data = responseText
+        ? JSON.parse(responseText)
+        : {};
+    } catch {
+      console.error(
+        "WICKET API INVALID RESPONSE:",
+        responseText
+      );
 
-      const dismissed =
-        dismissedPlayerId;
+      throw new Error(
+        "Server returned an invalid response."
+      );
+    }
 
-      const res =
-        await fetch(
-          `/api/matches/${matchId}/cricket/innings/${innings.id}/balls`,
-          {
-            method: "POST",
+    // ===================================================
+    // API ERROR
+    // ===================================================
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+    if (!res.ok) {
+      throw new Error(
+        "error" in data
+          ? data.error ||
+              "Failed to save wicket."
+          : "Failed to save wicket."
+      );
+    }
 
-            body: JSON.stringify({
-              strikerId:
-                Number(
-                  strikerId
-                ),
+    // ===================================================
+    // INNINGS / MATCH COMPLETION
+    // ===================================================
 
-              nonStrikerId:
-                Number(
-                  nonStrikerId
-                ),
-
-              bowlerId:
-                Number(
-                  bowlerId
-                ),
-
-              runsOffBat: 0,
-
-              extraRuns: 0,
-
-              totalRuns: 0,
-
-              extraType: "NONE",
-
-              isLegalDelivery:
-                true,
-
-              isWicket:
-                true,
-
-              dismissalType,
-
-              dismissedPlayerId:
-                Number(
-                  dismissedPlayerId
-                ),
-
-              fielderId:
-                fielderId
-                  ? Number(
-                      fielderId
-                    )
-                  : null,
-            }),
-          }
-        );
-
-      const data =
-        (await res.json()) as
-          | BallResponse
-          | {
-              error?: string;
-            };
-
-      if (!res.ok) {
-        throw new Error(
-          "error" in data
-            ? data.error ||
-                "Failed to save wicket."
-            : "Failed to save wicket."
-        );
-      }
-
-      /*
-       * =================================================
-       * AUTOMATIC INNINGS SWITCH
-       * =================================================
-       */
-
-      if (
-        "inningsCompleted" in
-          data &&
-        data.inningsCompleted &&
-        "nextInnings" in data &&
-        data.nextInnings
-      ) {
-        handleCompletedInnings(
-          data
-        );
-
-        return;
-      }
-
-      /*
-       * =================================================
-       * MATCH COMPLETED
-       * =================================================
-       */
-
-      if (
-        "matchCompleted" in
-          data &&
-        data.matchCompleted
-      ) {
-        handleCompletedInnings(
-          data
-        );
-
-        return;
-      }
-
-      /*
-       * =================================================
-       * NORMAL WICKET
-       * =================================================
-       */
-
+    if (
+      "inningsCompleted" in data &&
+      data.inningsCompleted &&
+      "nextInnings" in data &&
+      data.nextInnings
+    ) {
       setShowWicket(false);
 
       setDismissalType("");
@@ -4104,19 +4168,67 @@ async function addBall(
 
       setFielderId("");
 
-      let nextStriker = "";
+      setWicketRuns(0);
 
-      let nextNonStriker =
-        "";
+      await handleCompletedInnings(
+        data as BallResponse
+      );
 
+      return;
+    }
+
+    if (
+      "matchCompleted" in data &&
+      data.matchCompleted
+    ) {
+      setShowWicket(false);
+
+      setDismissalType("");
+
+      setDismissedPlayerId("");
+
+      setFielderId("");
+
+      setWicketRuns(0);
+
+      await handleCompletedInnings(
+        data as BallResponse
+      );
+
+      return;
+    }
+
+    // ===================================================
+    // BATTER POSITION CALCULATION
+    // ===================================================
+
+    let nextStriker = "";
+    let nextNonStriker = "";
+
+    // ===================================================
+    // CASE 1
+    // NORMAL DISMISSAL
+    //
+    // BOWLED / CAUGHT / LBW / STUMPED / ETC.
+    //
+    // No run-crossing logic.
+    // ===================================================
+
+    if (
+      dismissalType !== "RUN_OUT"
+    ) {
       if (
-        dismissed ===
+        dismissedPlayerId ===
         strikerId
       ) {
         /*
          * Striker is out.
          *
-         * New striker needs to be selected.
+         * Surviving non-striker
+         * remains at non-striker end.
+         *
+         * New batter will be selected
+         * as striker.
          */
 
         nextStriker = "";
@@ -4126,6 +4238,12 @@ async function addBall(
       } else {
         /*
          * Non-striker is out.
+         *
+         * Surviving striker remains
+         * striker.
+         *
+         * New batter will be selected
+         * as non-striker.
          */
 
         nextStriker =
@@ -4134,42 +4252,208 @@ async function addBall(
         nextNonStriker = "";
       }
 
-      setStrikerId(
-        nextStriker
-      );
+      // =================================================
+      // END OF OVER
+      // =================================================
 
-      setNonStrikerId(
-        nextNonStriker
-      );
+      if (overCompleted) {
+        /*
+         * If the over ends, the two ends
+         * change.
+         *
+         * If one position is empty because
+         * of the wicket, the empty position
+         * also changes.
+         */
 
-      setBowlerId(
-        bowlerId
-      );
+        [
+          nextStriker,
+          nextNonStriker,
+        ] = [
+          nextNonStriker,
+          nextStriker,
+        ];
+      }
+    }
 
-      saveActivePlayers(
-        nextStriker,
-        nextNonStriker,
-        bowlerId
-      );
+    // ===================================================
+    // CASE 2
+    // RUN OUT
+    // ===================================================
 
-      await loadMatch();
+    else {
+      /*
+       * RUN OUT needs special handling.
+       *
+       * First determine where the batters
+       * were after the completed runs.
+       */
 
+      let strikerAfterRuns =
+        strikerId;
+
+      let nonStrikerAfterRuns =
+        nonStrikerId;
+
+      /*
+       * If runs were completed and the
+       * batters crossed, they swap ends.
+       */
+
+      if (
+        runsOffBat % 2 === 1 &&
+        runOutCrossed
+      ) {
+        [
+          strikerAfterRuns,
+          nonStrikerAfterRuns,
+        ] = [
+          nonStrikerAfterRuns,
+          strikerAfterRuns,
+        ];
+      }
+
+      /*
+       * If an even number of runs was
+       * completed, they remain at their
+       * original ends.
+       *
+       * If the scorer explicitly says
+       * they crossed, we still use the
+       * completed-run parity above.
+       */
+
+      /*
+       * Now remove the dismissed batter.
+       */
+
+      if (
+        dismissedPlayerId ===
+        strikerAfterRuns
+      ) {
+        /*
+         * Dismissed batter is at
+         * striker end.
+         */
+
+        nextStriker = "";
+
+        nextNonStriker =
+          nonStrikerAfterRuns;
+      } else {
+        /*
+         * Dismissed batter is at
+         * non-striker end.
+         */
+
+        nextStriker =
+          strikerAfterRuns;
+
+        nextNonStriker = "";
+      }
+
+      /*
+       * =================================================
+       * END OF OVER
+       * =================================================
+       *
+       * If this was ball 6:
+       *
+       * surviving batter and empty
+       * new-batter position switch ends.
+       */
+
+      if (overCompleted) {
+        [
+          nextStriker,
+          nextNonStriker,
+        ] = [
+          nextNonStriker,
+          nextStriker,
+        ];
+      }
+    }
+
+    // ===================================================
+    // UPDATE STATE
+    // ===================================================
+
+    setStrikerId(
+      nextStriker
+    );
+
+    setNonStrikerId(
+      nextNonStriker
+    );
+
+    setBowlerId(
+      bowlerId
+    );
+
+    // ===================================================
+    // RESET WICKET UI
+    // ===================================================
+
+    setShowWicket(false);
+
+    setDismissalType("");
+
+    setDismissedPlayerId("");
+
+    setFielderId("");
+
+    setWicketRuns(0);
+
+    setRunOutCrossed(true);
+
+    // ===================================================
+    // SAVE ACTIVE PLAYERS
+    // ===================================================
+
+    saveActivePlayers(
+      nextStriker,
+      nextNonStriker,
+      bowlerId
+    );
+
+    // ===================================================
+    // RELOAD
+    // ===================================================
+
+    await loadMatch();
+
+    // ===================================================
+    // SUCCESS
+    // ===================================================
+
+    if (wicketRuns === 0) {
       toast.success(
         "Wicket recorded."
       );
-    } catch (error) {
-      console.error(error);
-
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to save wicket."
+    } else {
+      toast.success(
+        `${wicketRuns} run${
+          wicketRuns !== 1
+            ? "s"
+            : ""
+        } + Wicket recorded.`
       );
-    } finally {
-      setSaving(false);
     }
-  }
+  } catch (error) {
+    console.error(
+      "ADD WICKET ERROR:",
+      error
+    );
 
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : "Failed to save wicket."
+    );
+  } finally {
+    setSaving(false);
+  }
+}
   /*
    * =====================================================
    * LOADING
@@ -4851,203 +5135,425 @@ async function addBall(
             {/* =================================================
                 WICKET
             ================================================= */}
+{/* =================================================
+    WICKET
+================================================= */}
 
-            <section className="w-full min-w-0 rounded-2xl border border-red-200 bg-red-50 p-3">
+<section className="w-full min-w-0 rounded-2xl border border-red-200 bg-red-50 p-3">
 
-              {!showWicket ? (
-                <button
-                  disabled={
-                    saving
-                  }
-                  onClick={() =>
-                    setShowWicket(
-                      true
-                    )
-                  }
-                  className="h-11 w-full rounded-xl bg-red-600 text-sm font-black text-white hover:bg-red-700 disabled:opacity-40"
-                >
-                  🟥 WICKET
-                </button>
-              ) : (
-                <>
+  {!showWicket ? (
+    <button
+      type="button"
+      disabled={saving}
+      onClick={() => {
+        setShowWicket(true);
 
-                  <div className="mb-2 flex items-center justify-between">
+        setWicketRuns(0);
 
-                    <h2 className="text-sm font-black text-red-700">
-                      RECORD WICKET
-                    </h2>
+        setDismissalType("");
 
-                    <button
-                      onClick={() => {
-                        setShowWicket(
-                          false
-                        );
+        setDismissedPlayerId("");
 
-                        setDismissalType(
-                          ""
-                        );
+        setFielderId("");
 
-                        setDismissedPlayerId(
-                          ""
-                        );
+        setRunOutCrossed(true);
+      }}
+      className="h-11 w-full rounded-xl bg-red-600 text-sm font-black text-white hover:bg-red-700 disabled:opacity-40"
+    >
+      🟥 WICKET
+    </button>
+  ) : (
+    <>
 
-                        setFielderId(
-                          ""
-                        );
-                      }}
-                      className="text-[10px] font-black text-slate-500"
-                    >
-                      CANCEL
-                    </button>
+      {/* ================================================
+          HEADER
+      ================================================ */}
 
-                  </div>
+      <div className="mb-3 flex items-center justify-between">
 
-                  <div className="grid grid-cols-1 gap-2">
+        <div>
 
-                    <select
-                      value={
+          <h2 className="text-sm font-black text-red-700">
+            RECORD WICKET
+          </h2>
+
+          <p className="text-[10px] font-bold text-red-500">
+            Select runs and dismissal details
+          </p>
+
+        </div>
+
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => {
+            setShowWicket(false);
+
+            setDismissalType("");
+
+            setDismissedPlayerId("");
+
+            setFielderId("");
+
+            setWicketRuns(0);
+
+            setRunOutCrossed(true);
+          }}
+          className="text-[10px] font-black text-slate-500 hover:text-red-600"
+        >
+          CANCEL
+        </button>
+
+      </div>
+
+
+      {/* ================================================
+          RUNS + WICKET
+      ================================================ */}
+
+      <div className="mb-3 rounded-xl border border-red-200 bg-white p-3">
+
+        <label className="mb-2 block text-[10px] font-black text-red-700">
+          RUNS ON THIS DELIVERY
+        </label>
+
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+
+          {[0, 1, 2, 3, 4, 5, 6].map(
+            (run) => (
+              <button
+                key={run}
+                type="button"
+                disabled={saving}
+                onClick={() =>
+                  setWicketRuns(run)
+                }
+                className={`h-10 rounded-xl border text-sm font-black transition ${
+                  wicketRuns === run
+                    ? "border-red-600 bg-red-600 text-white"
+                    : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-red-50"
+                } disabled:opacity-40`}
+              >
+                {run}
+              </button>
+            )
+          )}
+
+        </div>
+
+        <p className="mt-2 text-[10px] font-bold text-slate-400">
+          Selected:{" "}
+          <span className="text-red-600">
+            {wicketRuns} run
+            {wicketRuns !== 1
+              ? "s"
+              : ""}
+          </span>
+          {" + WICKET"}
+        </p>
+
+      </div>
+
+
+      {/* ================================================
+          DISMISSED PLAYER
+      ================================================ */}
+
+      <div className="mb-2">
+
+        <label className="mb-1 block text-[10px] font-black text-slate-600">
+          DISMISSED PLAYER
+        </label>
+
+        <select
+          value={dismissedPlayerId}
+          onChange={(e) =>
+            setDismissedPlayerId(
+              e.target.value
+            )
+          }
+          disabled={saving}
+          className="h-10 w-full rounded-xl border bg-white px-2 text-xs font-bold outline-none focus:border-red-500"
+        >
+
+          <option value="">
+            Select dismissed player
+          </option>
+
+          {[
+            striker,
+            nonStriker,
+          ]
+            .filter(Boolean)
+            .map((player) => (
+              <option
+                key={player!.id}
+                value={player!.id}
+              >
+                {player!.name}
+                {player!.id ===
+                  Number(strikerId)
+                  ? " — Striker"
+                  : " — Non-striker"}
+              </option>
+            ))}
+
+        </select>
+
+      </div>
+
+
+      {/* ================================================
+          DISMISSAL TYPE
+      ================================================ */}
+
+      <div className="mb-2">
+
+        <label className="mb-1 block text-[10px] font-black text-slate-600">
+          DISMISSAL TYPE
+        </label>
+
+        <select
+          value={dismissalType}
+          onChange={(e) => {
+            const value =
+              e.target.value;
+
+            setDismissalType(value);
+
+            /*
+             * Reset run-out crossing
+             * when changing dismissal.
+             */
+
+            if (value !== "RUN_OUT") {
+              setRunOutCrossed(true);
+            }
+          }}
+          disabled={saving}
+          className="h-10 w-full rounded-xl border bg-white px-2 text-xs font-bold outline-none focus:border-red-500"
+        >
+
+          <option value="">
+            Select dismissal type
+          </option>
+
+          {dismissalTypes.map(
+            (type) => (
+              <option
+                key={type}
+                value={type}
+              >
+                {type.replace(
+                  "_",
+                  " "
+                )}
+              </option>
+            )
+          )}
+
+        </select>
+
+      </div>
+
+
+      {/* ================================================
+          RUN OUT CROSSING
+      ================================================ */}
+
+      {dismissalType ===
+        "RUN_OUT" && (
+        <div className="mb-2 rounded-xl border border-orange-200 bg-orange-50 p-3">
+
+          <div className="mb-2">
+
+            <p className="text-[10px] font-black text-orange-700">
+              RUN OUT — DID BATTERS CROSS?
+            </p>
+
+            <p className="mt-0.5 text-[9px] font-semibold text-orange-500">
+              Use this when runs were completed
+              before the wicket.
+            </p>
+
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() =>
+                setRunOutCrossed(true)
+              }
+              className={`h-10 rounded-xl border text-xs font-black ${
+                runOutCrossed
+                  ? "border-orange-600 bg-orange-600 text-white"
+                  : "border-orange-200 bg-white text-orange-700"
+              }`}
+            >
+              YES — CROSSED
+            </button>
+
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() =>
+                setRunOutCrossed(false)
+              }
+              className={`h-10 rounded-xl border text-xs font-black ${
+                !runOutCrossed
+                  ? "border-orange-600 bg-orange-600 text-white"
+                  : "border-orange-200 bg-white text-orange-700"
+              }`}
+            >
+              NO — NOT CROSSED
+            </button>
+
+          </div>
+
+        </div>
+      )}
+
+
+      {/* ================================================
+          FIELDER
+      ================================================ */}
+
+      <div className="mb-2">
+
+        <label className="mb-1 block text-[10px] font-black text-slate-600">
+          FIELDER / CATCHER
+        </label>
+
+        <select
+          value={fielderId}
+          onChange={(e) =>
+            setFielderId(
+              e.target.value
+            )
+          }
+          disabled={saving}
+          className="h-10 w-full rounded-xl border bg-white px-2 text-xs font-bold outline-none focus:border-red-500"
+        >
+
+          <option value="">
+            Select fielder
+          </option>
+
+          {bowlingPlayers.map(
+            (player) => (
+              <option
+                key={player.id}
+                value={player.id}
+              >
+                {player.name}
+                {player.jerseyNo
+                  ? ` #${player.jerseyNo}`
+                  : ""}
+              </option>
+            )
+          )}
+
+        </select>
+
+      </div>
+
+
+      {/* ================================================
+          SUMMARY
+      ================================================ */}
+
+      <div className="mb-2 rounded-xl border border-red-200 bg-white px-3 py-2">
+
+        <div className="flex items-center justify-between">
+
+          <span className="text-[10px] font-black text-slate-400">
+            DELIVERY
+          </span>
+
+          <span className="text-xs font-black text-red-600">
+            {wicketRuns} RUN
+            {wicketRuns !== 1
+              ? "S"
+              : ""}{" "}
+            + WICKET
+          </span>
+
+        </div>
+
+        {dismissedPlayerId && (
+          <div className="mt-1 flex items-center justify-between">
+
+            <span className="text-[10px] font-black text-slate-400">
+              OUT
+            </span>
+
+            <span className="text-xs font-black">
+              {
+                [
+                  striker,
+                  nonStriker,
+                ]
+                  .filter(Boolean)
+                  .find(
+                    (player) =>
+                      player!.id ===
+                      Number(
                         dismissedPlayerId
-                      }
-                      onChange={(e) =>
-                        setDismissedPlayerId(
-                          e.target.value
-                        )
-                      }
-                      className="h-10 rounded-xl border bg-white px-2 text-xs font-bold"
-                    >
+                      )
+                  )?.name
+              }
+            </span>
 
-                      <option value="">
-                        Dismissed player
-                      </option>
+          </div>
+        )}
 
-                      {[
-                        striker,
-                        nonStriker,
-                      ]
-                        .filter(
-                          Boolean
-                        )
-                        .map(
-                          (player) => (
-                            <option
-                              key={
-                                player!.id
-                              }
-                              value={
-                                player!.id
-                              }
-                            >
-                              {
-                                player!
-                                  .name
-                              }
-                            </option>
-                          )
-                        )}
+        {dismissalType && (
+          <div className="mt-1 flex items-center justify-between">
 
-                    </select>
+            <span className="text-[10px] font-black text-slate-400">
+              DISMISSAL
+            </span>
 
-                    <select
-                      value={
-                        dismissalType
-                      }
-                      onChange={(e) =>
-                        setDismissalType(
-                          e.target.value
-                        )
-                      }
-                      className="h-10 rounded-xl border bg-white px-2 text-xs font-bold"
-                    >
-
-                      <option value="">
-                        Dismissal type
-                      </option>
-
-                      {dismissalTypes.map(
-                        (type) => (
-                          <option
-                            key={type}
-                            value={type}
-                          >
-                            {type.replace(
-                              "_",
-                              " "
-                            )}
-                          </option>
-                        )
-                      )}
-
-                    </select>
-
-                    <select
-                      value={
-                        fielderId
-                      }
-                      onChange={(e) =>
-                        setFielderId(
-                          e.target.value
-                        )
-                      }
-                      className="h-10 rounded-xl border bg-white px-2 text-xs font-bold"
-                    >
-
-                      <option value="">
-                        Fielder / Catcher
-                      </option>
-
-                      {/* {bowlingPlayers
-                        .filter(
-                          (player) =>
-                            player.id !==
-                            Number(
-                              bowlerId
-                            )
-                        )
-                        .map(
-                          (player) => (
-                            <option
-                              key={
-                                player.id
-                              }
-                              value={
-                                player.id
-                              }
-                            >
-                              {
-                                player.name
-                              }
-                            </option>
-                          )
-                        )} */}
-
-                        {bowlingPlayers.map((player) => (
-  <option key={player.id} value={player.id}>
-    {player.name}
-  </option>
-))}
-
-                    </select>
-
-                  </div>
-
-                  <button
-                    disabled={
-                      saving
-                    }
-                    onClick={
-                      addWicket
-                    }
-                    className="mt-2 h-10 w-full rounded-xl bg-red-600 text-xs font-black text-white hover:bg-red-700 disabled:opacity-40"
-                  >
-                    {saving
-                      ? "SAVING..."
-                      : "CONFIRM WICKET"}
-                  </button>
-
-                </>
+            <span className="text-xs font-black">
+              {dismissalType.replace(
+                "_",
+                " "
               )}
+            </span>
 
-            </section>
+          </div>
+        )}
+
+      </div>
+
+
+      {/* ================================================
+          CONFIRM
+      ================================================ */}
+
+      <button
+        type="button"
+        disabled={saving}
+        onClick={addWicket}
+        className="h-11 w-full rounded-xl bg-red-600 text-xs font-black text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {saving
+          ? "SAVING..."
+          : `CONFIRM ${
+              wicketRuns
+            } RUN${
+              wicketRuns !== 1
+                ? "S"
+                : ""
+            } + WICKET`}
+      </button>
+
+    </>
+  )}
+
+</section>
             </div>
  </section>
 
