@@ -69,15 +69,6 @@ type FootballHandballAwardResult = {
 // CONSTANTS
 // =====================================================
 
-/*
- * Only these dismissals are credited to the bowler.
- *
- * NOT credited:
- * - RUN_OUT
- * - RETIRED_HURT
- * - RETIRED_OUT
- * - OBSTRUCTING_THE_FIELD
- */
 const BOWLER_WICKET_TYPES = new Set([
   "BOWLED",
   "CAUGHT",
@@ -125,38 +116,6 @@ function roundNumber(
 // FOOTBALL / HANDBALL TEAM MATCH COUNT
 // =====================================================
 
-/*
- * Counts the number of matches played by the player's
- * TEAM.
- *
- * IMPORTANT:
- *
- * We do NOT count every League match.
- *
- * We only count matches where:
- *
- *   match.team1Id === player.teamId
- *   OR
- *   match.team2Id === player.teamId
- *
- * This fixes cases such as:
- *
- * Lisha:
- *   Match #29 -> Victory Warriors vs Faith Strikers
- *                NOT Christ Kingdom -> NOT counted
- *
- *   Match #30 -> Christ Kingdom vs Hope Warriors
- *                Christ Kingdom -> counted
- *
- *   Match #31 -> Christ Kingdom vs Victory Warriors
- *                Christ Kingdom -> counted
- *
- * Result:
- *   Matches = 2
- *
- * The Set prevents the same match from being counted
- * more than once.
- */
 function getTeamMatchCount(
   matches: any[],
   sportType: "FOOTBALL" | "HANDBALL",
@@ -166,57 +125,47 @@ function getTeamMatchCount(
   const matchIds = new Set<number>();
 
   for (const match of matches) {
-    // -----------------------------------------------
-    // CORRECT SPORT
-    // -----------------------------------------------
-
+    // Correct sport
     if (
       match.game?.sportType !== sportType
     ) {
       continue;
     }
 
-    // -----------------------------------------------
-    // ONLY COMPLETED MATCHES
-    // -----------------------------------------------
-
+    // Only completed matches
     if (
       match.status !== "COMPLETED"
     ) {
       continue;
     }
 
-    // -----------------------------------------------
-    // PLAYER'S TEAM MUST ACTUALLY BE IN THE MATCH
-    // -----------------------------------------------
-
+    // Player's team must actually participate
     if (
-      match.team1Id !== teamId &&
-      match.team2Id !== teamId
+      Number(match.team1Id) !== Number(teamId) &&
+      Number(match.team2Id) !== Number(teamId)
     ) {
       continue;
     }
 
-    // -----------------------------------------------
-    // LEAGUE MATCH
-    // -----------------------------------------------
-
+    // League match
     if (
       match.stage === "LEAGUE"
     ) {
-      matchIds.add(match.id);
+      matchIds.add(
+        Number(match.id)
+      );
+
       continue;
     }
 
-    // -----------------------------------------------
-    // CURRENT FINAL
-    // -----------------------------------------------
-
+    // Current final
     if (
       match.stage === "FINAL" &&
-      match.id === finalMatchId
+      Number(match.id) === Number(finalMatchId)
     ) {
-      matchIds.add(match.id);
+      matchIds.add(
+        Number(match.id)
+      );
     }
   }
 
@@ -239,19 +188,11 @@ function calculateFootballHandballAward(
   // FIND FINAL
   // ===================================================
 
-  /*
-   * FINAL may be:
-   * - UPCOMING
-   * - LIVE
-   * - COMPLETED
-   */
-
   const finalMatch =
     matches
       .filter(
         (match) =>
-          match.game?.sportType ===
-            sportType &&
+          match.game?.sportType === sportType &&
           match.stage === "FINAL"
       )
       .sort(
@@ -272,8 +213,7 @@ function calculateFootballHandballAward(
 
     for (const match of matches) {
       if (
-        match.game?.sportType !==
-          sportType ||
+        match.game?.sportType !== sportType ||
         match.stage !== "LEAGUE" ||
         match.status !== "COMPLETED"
       ) {
@@ -295,7 +235,7 @@ function calculateFootballHandballAward(
 
         const player =
           playersMap.get(
-            event.playerId
+            Number(event.playerId)
           );
 
         if (!player) {
@@ -337,7 +277,7 @@ function calculateFootballHandballAward(
     }
 
     // =================================================
-    // FIX: CALCULATE TEAM MATCH COUNT
+    // TEAM MATCH COUNT
     // =================================================
 
     for (
@@ -362,8 +302,7 @@ function calculateFootballHandballAward(
         }))
         .sort((a, b) => {
           if (
-            b.goals !==
-            a.goals
+            b.goals !== a.goals
           ) {
             return (
               b.goals -
@@ -371,10 +310,8 @@ function calculateFootballHandballAward(
             );
           }
 
-          return (
-            a.playerName.localeCompare(
-              b.playerName
-            )
+          return a.playerName.localeCompare(
+            b.playerName
           );
         });
 
@@ -390,8 +327,7 @@ function calculateFootballHandballAward(
 
     return {
       bestPlayer:
-        tiedPlayers[0] ??
-        null,
+        tiedPlayers[0] ?? null,
 
       tiedPlayers,
 
@@ -406,22 +342,19 @@ function calculateFootballHandballAward(
   }
 
   // ===================================================
-  // FINAL EXISTS
+  // FINAL STATUS
   // ===================================================
 
   const finalStarted =
-    finalMatch.status ===
-      "LIVE" ||
-    finalMatch.status ===
-      "COMPLETED";
+    finalMatch.status === "LIVE" ||
+    finalMatch.status === "COMPLETED";
 
   const finalCompleted =
-    finalMatch.status ===
-    "COMPLETED";
+    finalMatch.status === "COMPLETED";
 
   const finalTeamIds = [
-    finalMatch.team1Id,
-    finalMatch.team2Id,
+    Number(finalMatch.team1Id),
+    Number(finalMatch.team2Id),
   ];
 
   // ===================================================
@@ -437,8 +370,7 @@ function calculateFootballHandballAward(
 
     for (const match of matches) {
       if (
-        match.game?.sportType !==
-          sportType ||
+        match.game?.sportType !== sportType ||
         match.stage !== "LEAGUE" ||
         match.status !== "COMPLETED"
       ) {
@@ -460,7 +392,7 @@ function calculateFootballHandballAward(
 
         const player =
           playersMap.get(
-            event.playerId
+            Number(event.playerId)
           );
 
         if (!player) {
@@ -502,7 +434,7 @@ function calculateFootballHandballAward(
     }
 
     // =================================================
-    // FIX: CALCULATE TEAM MATCH COUNT
+    // TEAM MATCH COUNT
     // =================================================
 
     for (
@@ -527,8 +459,7 @@ function calculateFootballHandballAward(
         }))
         .sort((a, b) => {
           if (
-            b.goals !==
-            a.goals
+            b.goals !== a.goals
           ) {
             return (
               b.goals -
@@ -536,10 +467,8 @@ function calculateFootballHandballAward(
             );
           }
 
-          return (
-            a.playerName.localeCompare(
-              b.playerName
-            )
+          return a.playerName.localeCompare(
+            b.playerName
           );
         });
 
@@ -555,8 +484,7 @@ function calculateFootballHandballAward(
 
     return {
       bestPlayer:
-        tiedPlayers[0] ??
-        null,
+        tiedPlayers[0] ?? null,
 
       tiedPlayers,
 
@@ -582,21 +510,18 @@ function calculateFootballHandballAward(
 
   for (const match of matches) {
     if (
-      match.game?.sportType !==
-      sportType
+      match.game?.sportType !== sportType
     ) {
       continue;
     }
 
-    // ===============================================
-    // LEAGUE
-    // ===============================================
+    // =================================================
+    // LEAGUE GOALS
+    // =================================================
 
     if (
-      match.stage ===
-        "LEAGUE" &&
-      match.status ===
-        "COMPLETED"
+      match.stage === "LEAGUE" &&
+      match.status === "COMPLETED"
     ) {
       const events =
         sportType === "FOOTBALL"
@@ -605,8 +530,7 @@ function calculateFootballHandballAward(
 
       for (const event of events) {
         if (
-          event.eventType !==
-            "GOAL" ||
+          event.eventType !== "GOAL" ||
           !event.playerId
         ) {
           continue;
@@ -614,16 +538,17 @@ function calculateFootballHandballAward(
 
         const player =
           playersMap.get(
-            event.playerId
+            Number(event.playerId)
           );
 
         if (!player) {
           continue;
         }
 
+        // Only players from final teams
         if (
           !finalTeamIds.includes(
-            player.teamId
+            Number(player.teamId)
           )
         ) {
           continue;
@@ -659,24 +584,21 @@ function calculateFootballHandballAward(
           );
         }
 
+        // League goal
         stats.goals += 1;
       }
     }
 
-    // ===============================================
-    // FINAL
-    // ===============================================
+    // =================================================
+    // FINAL GOALS
+    // =================================================
 
     if (
-      match.stage ===
-        "FINAL" &&
-      match.id ===
-        finalMatch.id &&
+      match.stage === "FINAL" &&
+      match.id === finalMatch.id &&
       (
-        match.status ===
-          "LIVE" ||
-        match.status ===
-          "COMPLETED"
+        match.status === "LIVE" ||
+        match.status === "COMPLETED"
       )
     ) {
       const events =
@@ -686,8 +608,7 @@ function calculateFootballHandballAward(
 
       for (const event of events) {
         if (
-          event.eventType !==
-            "GOAL" ||
+          event.eventType !== "GOAL" ||
           !event.playerId
         ) {
           continue;
@@ -695,7 +616,7 @@ function calculateFootballHandballAward(
 
         const player =
           playersMap.get(
-            event.playerId
+            Number(event.playerId)
           );
 
         if (!player) {
@@ -704,7 +625,7 @@ function calculateFootballHandballAward(
 
         if (
           !finalTeamIds.includes(
-            player.teamId
+            Number(player.teamId)
           )
         ) {
           continue;
@@ -740,13 +661,15 @@ function calculateFootballHandballAward(
           );
         }
 
+        // Final goal
+        // Overall = League + Final
         stats.goals += 1;
       }
     }
   }
 
   // ===================================================
-  // FIX: CALCULATE TEAM MATCH COUNTS
+  // TEAM MATCH COUNTS
   // ===================================================
 
   for (
@@ -776,8 +699,7 @@ function calculateFootballHandballAward(
       }))
       .sort((a, b) => {
         if (
-          b.goals !==
-          a.goals
+          b.goals !== a.goals
         ) {
           return (
             b.goals -
@@ -785,10 +707,8 @@ function calculateFootballHandballAward(
           );
         }
 
-        return (
-          a.playerName.localeCompare(
-            b.playerName
-          )
+        return a.playerName.localeCompare(
+          b.playerName
         );
       });
 
@@ -797,8 +717,7 @@ function calculateFootballHandballAward(
   // ===================================================
 
   if (
-    leaderboard.length ===
-      0
+    leaderboard.length === 0
   ) {
     return {
       bestPlayer: null,
@@ -831,8 +750,7 @@ function calculateFootballHandballAward(
       )
       .map((player) => ({
         ...player,
-        tiedPlayerCount:
-          1,
+        tiedPlayerCount: 1,
       }));
 
   // ===================================================
@@ -840,8 +758,7 @@ function calculateFootballHandballAward(
   // ===================================================
 
   if (
-    tiedPlayers.length ===
-    1
+    tiedPlayers.length === 1
   ) {
     return {
       bestPlayer:
@@ -867,7 +784,7 @@ function calculateFootballHandballAward(
     new Set(
       tiedPlayers.map(
         (player) =>
-          player.teamId
+          Number(player.teamId)
       )
     );
 
@@ -876,8 +793,7 @@ function calculateFootballHandballAward(
   // ===================================================
 
   if (
-    tiedTeamIds.size ===
-    1
+    tiedTeamIds.size === 1
   ) {
     const count =
       tiedPlayers.length;
@@ -910,23 +826,149 @@ function calculateFootballHandballAward(
 
   // ===================================================
   // TIE FROM DIFFERENT FINAL TEAMS
+  //
+  // WINNING TEAM PLAYER WINS THE OVERALL AWARD
+  // ===================================================
+
+  let winnerTeamId = 0;
+
+  // ===================================================
+  // 1. USE STORED WINNER TEAM
   // ===================================================
 
   if (
     finalCompleted &&
     finalMatch.winnerTeamId
   ) {
+    winnerTeamId =
+      Number(
+        finalMatch.winnerTeamId
+      );
+  }
+
+  // ===================================================
+  // 2. FALLBACK:
+  // CALCULATE WINNER FROM FINAL GOALS
+  // ===================================================
+
+  if (
+    finalCompleted &&
+    winnerTeamId <= 0
+  ) {
+    const finalEvents =
+      sportType === "FOOTBALL"
+        ? finalMatch.footballEvents
+        : finalMatch.handballEvents;
+
+    let team1Goals = 0;
+    let team2Goals = 0;
+
+    for (
+      const event of finalEvents
+    ) {
+      if (
+        event.eventType !== "GOAL" ||
+        !event.playerId
+      ) {
+        continue;
+      }
+
+      const player =
+        playersMap.get(
+          Number(event.playerId)
+        );
+
+      if (!player) {
+        continue;
+      }
+
+      const playerTeamId =
+        Number(player.teamId);
+
+      if (
+        playerTeamId ===
+        Number(finalMatch.team1Id)
+      ) {
+        team1Goals += 1;
+      }
+
+      if (
+        playerTeamId ===
+        Number(finalMatch.team2Id)
+      ) {
+        team2Goals += 1;
+      }
+    }
+
+    if (
+      team1Goals >
+      team2Goals
+    ) {
+      winnerTeamId =
+        Number(finalMatch.team1Id);
+    } else if (
+      team2Goals >
+      team1Goals
+    ) {
+      winnerTeamId =
+        Number(finalMatch.team2Id);
+    }
+  }
+
+  // ===================================================
+  // 3. FALLBACK:
+  // STORED FINAL SCORE
+  // ===================================================
+
+  if (
+    finalCompleted &&
+    winnerTeamId <= 0
+  ) {
+    const team1Score =
+      Number(
+        finalMatch.team1Score ?? 0
+      );
+
+    const team2Score =
+      Number(
+        finalMatch.team2Score ?? 0
+      );
+
+    if (
+      team1Score >
+      team2Score
+    ) {
+      winnerTeamId =
+        Number(finalMatch.team1Id);
+    } else if (
+      team2Score >
+      team1Score
+    ) {
+      winnerTeamId =
+        Number(finalMatch.team2Id);
+    }
+  }
+
+  // ===================================================
+  // 4. WINNING TEAM PLAYER
+  // ===================================================
+
+  if (
+    finalCompleted &&
+    winnerTeamId > 0
+  ) {
     const winningPlayer =
       tiedPlayers.find(
         (player) =>
-          player.teamId ===
-          finalMatch.winnerTeamId
+          Number(player.teamId) ===
+          winnerTeamId
       );
 
     if (winningPlayer) {
       return {
         bestPlayer: {
           ...winningPlayer,
+
           tiedPlayerCount:
             tiedPlayers.length,
         },
@@ -945,7 +987,7 @@ function calculateFootballHandballAward(
   }
 
   // ===================================================
-  // FINAL LIVE / NO WINNER YET
+  // NO WINNER CAN BE RESOLVED
   // ===================================================
 
   return {
@@ -1269,7 +1311,7 @@ export async function GET() {
     // =====================================================
 
     /*
-     * CRICKET AND THROWBALL LOGIC BELOW IS KEPT AS-IS.
+     * CRICKET AND THROWBALL LOGIC KEPT AS-IS.
      */
 
     for (const match of completedMatches) {
@@ -1953,6 +1995,7 @@ export async function GET() {
         stats.playerId,
         {
           ...stats,
+
           matches:
             new Set(
               stats.matches
@@ -1975,6 +2018,7 @@ export async function GET() {
         stats.playerId,
         {
           ...stats,
+
           matches:
             new Set(
               stats.matches
@@ -1989,17 +2033,18 @@ export async function GET() {
 
     for (const match of matches) {
       if (
-        match.stage !==
-          "FINAL" ||
+        match.stage !== "FINAL" ||
         (
-          match.status !==
-            "LIVE" &&
-          match.status !==
-            "COMPLETED"
+          match.status !== "LIVE" &&
+          match.status !== "COMPLETED"
         )
       ) {
         continue;
       }
+
+      // =================================================
+      // FOOTBALL
+      // =================================================
 
       if (
         match.game?.sportType ===
@@ -2049,6 +2094,10 @@ export async function GET() {
           }
         }
       }
+
+      // =================================================
+      // HANDBALL
+      // =================================================
 
       if (
         match.game?.sportType ===

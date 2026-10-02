@@ -10,6 +10,9 @@ import {
   MapPin,
   CalendarDays,
   CheckCircle2,
+  Target,
+  User,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,17 +39,9 @@ type ThrowballScore = {
   team1Id: number;
   team2Id: number;
 
-  /*
-   * FINAL THROWBALL SCORE
-   * One set only
-   */
   team1Score: number;
   team2Score: number;
 
-  /*
-   * These fields may still exist in Prisma/database
-   * for compatibility, but are NOT used by this UI.
-   */
   currentSet?: number;
 
   team1Set1?: number;
@@ -59,6 +54,59 @@ type ThrowballScore = {
 
   winnerTeamId: number | null;
 };
+
+/* =========================================================
+   PLAYER
+========================================================= */
+
+type ThrowballPlayer = {
+  id: number;
+  name: string;
+  jerseyNo?: number | null;
+  teamId: number;
+};
+
+/* =========================================================
+   SUCCESSFUL ATTACK
+========================================================= */
+
+type SuccessfulAttack = {
+  id: number;
+
+  attackerId?: number | null;
+
+  opponentPlayerId?: number | null;
+
+  attacker?: ThrowballPlayer & {
+    team?: {
+      id: number;
+      name: string;
+    } | null;
+  } | null;
+
+  opponent?: ThrowballPlayer & {
+    team?: {
+      id: number;
+      name: string;
+    } | null;
+  } | null;
+
+  attackerTeam?: {
+    id: number;
+    name: string;
+  } | null;
+
+  opponentTeam?: {
+    id: number;
+    name: string;
+  } | null;
+
+  [key: string]: unknown;
+};
+
+/* =========================================================
+   MATCH
+========================================================= */
 
 type Match = {
   id: number;
@@ -93,10 +141,22 @@ type Match = {
   throwballScore: ThrowballScore | null;
 };
 
+/* =========================================================
+   API RESPONSE
+========================================================= */
+
 type ApiResponse = {
   success: boolean;
+
   match?: Match;
+
   error?: string;
+
+  successfulAttacks?: SuccessfulAttack[];
+
+  throwballPointsDetailed?: SuccessfulAttack[];
+
+  successfulAttackCount?: number;
 };
 
 /* =========================================================
@@ -113,6 +173,9 @@ export default function ThrowballSummaryPage({
 
   const [match, setMatch] =
     useState<Match | null>(null);
+
+  const [successfulAttacks, setSuccessfulAttacks] =
+    useState<SuccessfulAttack[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -207,6 +270,22 @@ export default function ThrowballSummaryPage({
       }
 
       setMatch(data.match);
+
+      /*
+       * IMPORTANT:
+       *
+       * The API now returns successfulAttacks
+       * separately from match.
+       */
+      setSuccessfulAttacks(
+        Array.isArray(data.successfulAttacks)
+          ? data.successfulAttacks
+          : Array.isArray(
+              data.throwballPointsDetailed
+            )
+          ? data.throwballPointsDetailed
+          : []
+      );
     } catch (err) {
       console.error(
         "THROWBALL SUMMARY LOAD ERROR:",
@@ -342,20 +421,14 @@ export default function ThrowballSummaryPage({
      FINAL SCORES
   ======================================================= */
 
-  const team1Score = score.team1Score ?? 0;
-  const team2Score = score.team2Score ?? 0;
+  const team1Score =
+    score.team1Score ?? 0;
+
+  const team2Score =
+    score.team2Score ?? 0;
 
   /* =======================================================
      THROWBALL WINNING RULE
-     
-     First to 11 AND at least 2 points ahead.
-
-     Examples:
-       11-9  = winner
-       11-10 = continue
-       12-10 = winner
-       13-11 = winner
-       15-14 = continue
   ======================================================= */
 
   function hasWon(
@@ -382,32 +455,40 @@ export default function ThrowballSummaryPage({
      WINNER
   ======================================================= */
 
-  let winnerTeamId: number | null =
+  let winnerTeamId:
+    | number
+    | null =
     score.winnerTeamId ??
     match.winnerTeamId ??
     null;
 
-  /*
-   * Calculate winner from the current score
-   * if winnerTeamId is not saved yet.
-   */
-
   if (winnerTeamId === null) {
     if (team1Won) {
-      winnerTeamId = match.team1Id;
+      winnerTeamId =
+        match.team1Id;
     } else if (team2Won) {
-      winnerTeamId = match.team2Id;
+      winnerTeamId =
+        match.team2Id;
     }
   }
 
-  let winnerName = "No Winner";
+  let winnerName =
+    "No Winner";
 
-  if (winnerTeamId === match.team1Id) {
-    winnerName = match.team1.name;
+  if (
+    winnerTeamId ===
+    match.team1Id
+  ) {
+    winnerName =
+      match.team1.name;
   }
 
-  if (winnerTeamId === match.team2Id) {
-    winnerName = match.team2.name;
+  if (
+    winnerTeamId ===
+    match.team2Id
+  ) {
+    winnerName =
+      match.team2.name;
   }
 
   /* =======================================================
@@ -507,17 +588,14 @@ export default function ThrowballSummaryPage({
 
           <div className="grid grid-cols-3 items-center gap-2">
 
-            {/* TEAM 1 */}
-
             <FinalTeam
               team={match.team1}
               points={team1Score}
               winner={
-                winnerTeamId === match.team1Id
+                winnerTeamId ===
+                match.team1Id
               }
             />
-
-            {/* CENTER */}
 
             <div className="text-center">
 
@@ -541,17 +619,86 @@ export default function ThrowballSummaryPage({
 
             </div>
 
-            {/* TEAM 2 */}
-
             <FinalTeam
               team={match.team2}
               points={team2Score}
               winner={
-                winnerTeamId === match.team2Id
+                winnerTeamId ===
+                match.team2Id
               }
             />
 
           </div>
+        </section>
+
+        {/* =================================================
+            SUCCESSFUL ATTACKS
+        ================================================= */}
+
+        <section className="mt-4 rounded-2xl border bg-white p-4 shadow-sm">
+
+          <div className="mb-4 flex items-center justify-between gap-3">
+
+            <div className="flex items-center gap-2">
+
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+                <Target size={18} />
+              </div>
+
+              <div>
+                <h2 className="text-sm font-black text-slate-900">
+                  Successful Attacks
+                </h2>
+
+                <p className="text-[10px] font-medium text-slate-400">
+                  Every successful attack and opponent
+                </p>
+              </div>
+
+            </div>
+
+            <div className="rounded-full bg-orange-100 px-3 py-1 text-[10px] font-black text-orange-700">
+              {successfulAttacks.length}
+            </div>
+
+          </div>
+
+          {successfulAttacks.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+
+              <Target
+                size={28}
+                className="mx-auto text-slate-300"
+              />
+
+              <p className="mt-2 text-sm font-bold text-slate-500">
+                No successful attacks recorded
+              </p>
+
+              <p className="mt-1 text-[10px] text-slate-400">
+                Successful attacks will appear here after they are recorded.
+              </p>
+
+            </div>
+          ) : (
+            <div className="space-y-3">
+
+              {successfulAttacks.map(
+                (attack, index) => (
+                  <SuccessfulAttackCard
+                    key={
+                      attack.id ??
+                      `${index}`
+                    }
+                    attack={attack}
+                    index={index}
+                  />
+                )
+              )}
+
+            </div>
+          )}
+
         </section>
 
         {/* =================================================
@@ -574,62 +721,78 @@ export default function ThrowballSummaryPage({
             WINNER CARD
         ================================================= */}
 
-        {completed && winnerTeamId !== null && (
-          <section className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-5 text-center">
+        {completed &&
+          winnerTeamId !== null && (
+            <section className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-5 text-center">
 
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
-              <Trophy
-                size={24}
-                className="text-yellow-600"
-              />
-            </div>
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
+                <Trophy
+                  size={24}
+                  className="text-yellow-600"
+                />
+              </div>
 
-            <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-yellow-700">
-              Winner
-            </p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-yellow-700">
+                Winner
+              </p>
 
-            <h2 className="mt-1 text-2xl font-black text-yellow-950">
-              {winnerName}
-            </h2>
+              <h2 className="mt-1 text-2xl font-black text-yellow-950">
+                {winnerName}
+              </h2>
 
-            <p className="mt-1 text-xs font-bold text-yellow-700">
-              Final Score{" "}
-              {team1Score} - {team2Score}
-            </p>
+              <p className="mt-1 text-xs font-bold text-yellow-700">
+                Final Score{" "}
+                {team1Score} -{" "}
+                {team2Score}
+              </p>
 
-            <p className="mt-1 text-[10px] text-yellow-600">
-              Won by{" "}
-              {Math.abs(
-                team1Score - team2Score
-              )} points
-            </p>
+              <p className="mt-1 text-[10px] text-yellow-600">
+                Won by{" "}
+                {Math.abs(
+                  team1Score -
+                    team2Score
+                )}{" "}
+                points
+              </p>
 
-          </section>
-        )}
+            </section>
+          )}
 
         {/* =================================================
             MATCH INFORMATION
         ================================================= */}
 
         <section className="mt-4 rounded-2xl border bg-white p-4 shadow-sm">
+
           <SectionTitle title="Match Information" />
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
 
             <InfoCard
-              icon={<Trophy size={15} />}
+              icon={
+                <Trophy size={15} />
+              }
               label="Match"
-              value={`#${match.matchNumber ?? "-"}`}
+              value={`#${
+                match.matchNumber ??
+                "-"
+              }`}
             />
 
             <InfoCard
-              icon={<MapPin size={15} />}
+              icon={
+                <MapPin size={15} />
+              }
               label="Venue"
               value={match.venue}
             />
 
             <InfoCard
-              icon={<CalendarDays size={15} />}
+              icon={
+                <CalendarDays
+                  size={15}
+                />
+              }
               label="Date"
               value={formatDate(
                 match.matchDate
@@ -637,7 +800,11 @@ export default function ThrowballSummaryPage({
             />
 
             <InfoCard
-              icon={<CheckCircle2 size={15} />}
+              icon={
+                <CheckCircle2
+                  size={15}
+                />
+              }
               label="Status"
               value={
                 completed
@@ -660,18 +827,24 @@ export default function ThrowballSummaryPage({
           <div className="grid grid-cols-2 gap-3">
 
             <TeamSummary
-              teamName={match.team1.name}
+              teamName={
+                match.team1.name
+              }
               points={team1Score}
               winner={
-                winnerTeamId === match.team1Id
+                winnerTeamId ===
+                match.team1Id
               }
             />
 
             <TeamSummary
-              teamName={match.team2.name}
+              teamName={
+                match.team2.name
+              }
               points={team2Score}
               winner={
-                winnerTeamId === match.team2Id
+                winnerTeamId ===
+                match.team2Id
               }
             />
 
@@ -762,6 +935,285 @@ export default function ThrowballSummaryPage({
 }
 
 /* =========================================================
+   SUCCESSFUL ATTACK CARD
+========================================================= */
+
+function SuccessfulAttackCard({
+  attack,
+  index,
+}: {
+  attack: SuccessfulAttack;
+  index: number;
+}) {
+  const attacker =
+    attack.attacker;
+
+  const opponent =
+    attack.opponent;
+
+  const attackerTeam =
+    attack.attackerTeam ??
+    attacker?.team ??
+    null;
+
+  const opponentTeam =
+    attack.opponentTeam ??
+    opponent?.team ??
+    null;
+
+  /*
+   * Try to show a useful point/set number
+   * if your database already has one.
+   *
+   * This does NOT require a specific Prisma field.
+   */
+
+  const pointNumber =
+    getOptionalNumber(
+      attack,
+      [
+        "pointNumber",
+        "sequence",
+        "point",
+        "number",
+      ]
+    );
+
+  const currentSet =
+    getOptionalNumber(
+      attack,
+      [
+        "set",
+        "setNumber",
+        "currentSet",
+      ]
+    );
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+
+      {/* =================================================
+          TOP
+      ================================================= */}
+
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2">
+
+        <div className="flex items-center gap-2">
+
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-[10px] font-black text-orange-700">
+            #{index + 1}
+          </div>
+
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+              Successful Attack
+            </p>
+
+            {currentSet !== null && (
+              <p className="text-[9px] font-medium text-slate-400">
+                Set {currentSet}
+              </p>
+            )}
+          </div>
+
+        </div>
+
+        {pointNumber !== null && (
+          <div className="rounded-full bg-orange-100 px-2.5 py-1 text-[9px] font-black text-orange-700">
+            Point {pointNumber}
+          </div>
+        )}
+
+      </div>
+
+      {/* =================================================
+          ATTACK DETAILS
+      ================================================= */}
+
+      <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+
+        {/* =================================================
+            ATTACKER
+        ================================================= */}
+
+        <PlayerAttackSide
+          label="Attacker"
+          player={attacker}
+          team={attackerTeam}
+          side="left"
+        />
+
+        {/* =================================================
+            CENTER
+        ================================================= */}
+
+        <div className="flex items-center justify-center">
+
+          <div className="hidden h-px w-8 bg-slate-200 sm:block" />
+
+          <div className="mx-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm">
+            <Target size={17} />
+          </div>
+
+          <div className="hidden h-px w-8 bg-slate-200 sm:block" />
+
+        </div>
+
+        {/* =================================================
+            OPPONENT
+        ================================================= */}
+
+        <PlayerAttackSide
+          label="Opponent"
+          player={opponent}
+          team={opponentTeam}
+          side="right"
+        />
+
+      </div>
+
+    </div>
+  );
+}
+
+/* =========================================================
+   PLAYER ATTACK SIDE
+========================================================= */
+
+function PlayerAttackSide({
+  label,
+  player,
+  team,
+  side,
+}: {
+  label: string;
+  player:
+    | (ThrowballPlayer & {
+        team?: {
+          id: number;
+          name: string;
+        } | null;
+      })
+    | null
+    | undefined;
+
+  team:
+    | {
+        id: number;
+        name: string;
+      }
+    | null
+    | undefined;
+
+  side: "left" | "right";
+}) {
+  if (!player) {
+    return (
+      <div
+        className={`rounded-xl border border-dashed border-slate-200 bg-white p-3 ${
+          side === "right"
+            ? "sm:text-right"
+            : ""
+        }`}
+      >
+        <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+          {label}
+        </p>
+
+        <p className="mt-1 text-xs font-bold text-slate-400">
+          Player not recorded
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`rounded-xl border border-slate-200 bg-white p-3 ${
+        side === "right"
+          ? "sm:text-right"
+          : ""
+      }`}
+    >
+
+      <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+
+      <div
+        className={`mt-2 flex items-center gap-2 ${
+          side === "right"
+            ? "sm:flex-row-reverse"
+            : ""
+        }`}
+      >
+
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+          <User size={17} />
+        </div>
+
+        <div className="min-w-0">
+
+          <p className="truncate text-sm font-black text-slate-900">
+            {player.name}
+          </p>
+
+          <p className="truncate text-[10px] font-semibold text-slate-500">
+            {team?.name ??
+              "Unknown Team"}
+          </p>
+
+        </div>
+
+      </div>
+
+      {player.jerseyNo !==
+        null &&
+        player.jerseyNo !==
+          undefined && (
+          <div
+            className={`mt-2 flex items-center gap-1 text-[9px] font-bold text-slate-400 ${
+              side === "right"
+                ? "justify-end"
+                : ""
+            }`}
+          >
+            <Shield size={11} />
+
+            Jersey #
+            {player.jerseyNo}
+          </div>
+        )}
+
+    </div>
+  );
+}
+
+/* =========================================================
+   GET OPTIONAL NUMBER
+========================================================= */
+
+function getOptionalNumber(
+  object: Record<string, unknown>,
+  keys: string[]
+): number | null {
+  for (const key of keys) {
+    const value =
+      object[key];
+
+    if (
+      typeof value ===
+      "number" &&
+      Number.isFinite(value)
+    ) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+/* =========================================================
    HEADER
 ========================================================= */
 
@@ -806,7 +1258,8 @@ function SummaryHeader({
 
         <span
           className={`rounded-full px-3 py-1 text-[10px] font-black ${
-            match.status === "COMPLETED"
+            match.status ===
+            "COMPLETED"
               ? "bg-green-100 text-green-700"
               : "bg-orange-100 text-orange-700"
           }`}
@@ -935,8 +1388,6 @@ function SingleSetCard({
 
       <div className="mt-5 grid grid-cols-3 items-center gap-3">
 
-        {/* TEAM 1 */}
-
         <div className="text-center">
 
           <p className="truncate text-xs font-black text-slate-700">
@@ -949,8 +1400,6 @@ function SingleSetCard({
 
         </div>
 
-        {/* VS */}
-
         <div className="text-center">
 
           <span className="text-xs font-black text-slate-300">
@@ -958,8 +1407,6 @@ function SingleSetCard({
           </span>
 
         </div>
-
-        {/* TEAM 2 */}
 
         <div className="text-center">
 
@@ -1062,7 +1509,8 @@ function RuleCard({
   score: string;
   result: string;
 }) {
-  const won = result === "Win";
+  const won =
+    result === "Win";
 
   return (
     <div className="rounded-xl bg-white/80 p-2 text-center">
